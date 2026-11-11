@@ -8,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script> <!-- Thêm dòng này -->
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyALQzQvyx4u1qq6MvR3ee6WuXQBQu5uV2Q",
@@ -652,12 +651,10 @@ const Store = {
     this.unsubscribe = docRef.onSnapshot((doc) => {
       if (doc.exists) {
         const cloudData = doc.data().payload;
-        if (cloudData) {
-          if (JSON.stringify(cloudData) !== JSON.stringify(DB)) {
+        if (cloudData && JSON.stringify(cloudData) !== JSON.stringify(DB)) {
             DB = cloudData;
             App.cfg.migrate && App.cfg.migrate(DB);
             if (window.appInitialized) App.render(); 
-          }
         }
       } else {
         docRef.set({ payload: DB });
@@ -669,7 +666,7 @@ const Store = {
     const el = $('#saveState'); 
     if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
     
-    // XÓA BỎ CÁC GIÁ TRỊ UNDEFINED BẰNG CÁCH ÉP QUA JSON
+    // DÒNG QUAN TRỌNG NHẤT: Lọc bỏ các giá trị rỗng/undefined để Firebase không bị lỗi
     const cleanDB = JSON.parse(JSON.stringify(DB)); 
     
     const docRef = db.collection('workspaces').doc('team_data');
@@ -681,16 +678,12 @@ const Store = {
     }).catch(e => {
       console.error("Lỗi lưu Firebase:", e);
       if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!';
-      toast('Lỗi kết nối Firebase. Hãy kiểm tra lại mạng.', 'err', 5000);
+      toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err');
     });
   },
   
-  status() {}, 
-  saved() {},
-  serialize() { return ''; },
-  guide: async () => true,
-  save: async () => {},
-  draft: () => null
+  status() {}, saved() {}, serialize() { return ''; },
+  guide: async () => true, save: async () => {}, draft: () => null
 };
 window.addEventListener('beforeunload', e => { if (Store.dirty) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); Store.save(); } });
@@ -2247,42 +2240,36 @@ document.addEventListener('DOMContentLoaded', () => {
   async function checkPassword() {
       const enteredPass = loginPassword.value;
       try {
-          // Đăng nhập bằng tài khoản Admin đã tạo trên Firebase
-          await firebase.auth().signInWithEmailAndPassword("admin@giaoviec.com", enteredPass);
+          const docRef = db.collection('config').doc('settings');
+          const doc = await docRef.get();
           
-          // Nếu không có lỗi văng ra -> Mật khẩu đúng
-          loginScreen.style.display = 'none'; 
-          
-          if (!window.appInitialized) {
-               window.appInitialized = true; 
-               
-               // --- KHỞI TẠO APP ---
-               App.init({
-                 id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
-                 palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
-                 sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
-                 counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
-                 nav: [
-                   { group: 'Tổng quan', items: ['dashboard'] },
-                   { group: 'Giao việc', items: ['tasks'] },
-                   { group: 'Chuyên đề Cải tiến', items: ['topics'] },
-                   { group: 'Quản lý', items: ['people'] },
-                   { group: 'Thiết lập', items: ['caidat'] }
-                 ],
-                 views: { dashboard: vDashboard, topics: vTopics, tasks: vTasks, people: vPeople, caidat: vSet }
-               });
-               // ---------------------
-               
-               toast('Đăng nhập thành công!', 'ok');
+          if (doc.exists && doc.data().password === enteredPass) {
+              loginScreen.style.display = 'none'; 
+              
+              if (!window.appInitialized) {
+                   window.appInitialized = true; 
+                   App.init({
+                     id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
+                     palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
+                     sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
+                     counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
+                     nav: [
+                       { group: 'Tổng quan', items: ['dashboard'] },
+                       { group: 'Giao việc', items: ['tasks'] },
+                       { group: 'Chuyên đề Cải tiến', items: ['topics'] },
+                       { group: 'Quản lý', items: ['people'] },
+                       { group: 'Thiết lập', items: ['caidat'] }
+                     ],
+                     views: { dashboard: vDashboard, topics: vTopics, tasks: vTasks, people: vPeople, caidat: vSet }
+                   });
+                   toast('Đăng nhập thành công!', 'ok');
+              }
+          } else {
+              loginError.style.display = 'block';
           }
       } catch (error) {
-          console.error("Lỗi đăng nhập:", error);
-          // Nếu sai mật khẩu, Firebase sẽ báo lỗi auth/wrong-password
-          if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
-              loginError.style.display = 'block'; // Hiện dòng chữ đỏ "Mật khẩu không đúng"
-          } else {
-              alert("Lỗi kết nối: " + error.message);
-          }
+          console.error("Lỗi kết nối Firebase:", error);
+          alert("Lỗi kết nối Firebase: " + error.message);
       }
   }
 
