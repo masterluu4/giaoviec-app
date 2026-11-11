@@ -666,8 +666,27 @@ const Store = {
     const el = $('#saveState'); 
     if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
     
-    // DÒNG QUAN TRỌNG NHẤT: Lọc bỏ các giá trị rỗng/undefined để Firebase không bị lỗi
+    // 1. Tạo bản sao sạch của DB
     const cleanDB = JSON.parse(JSON.stringify(DB)); 
+    
+    // 2. Hàm chuyển đổi mảng lồng [ngày, %] thành object { date, value }
+    const fixNestedArrays = (arr) => {
+      if (!Array.isArray(arr)) return arr;
+      return arr.map(item => {
+        if (Array.isArray(item) && item.length === 2) {
+          return { date: item[0], value: item[1] };
+        }
+        return item;
+      });
+    };
+
+    // 3. Áp dụng chuyển đổi cho tất cả các trường 'log' có thể có
+    if (cleanDB.topicTasks) {
+      cleanDB.topicTasks.forEach(t => { t.log = fixNestedArrays(t.log); });
+    }
+    if (cleanDB.assignments) {
+      cleanDB.assignments.forEach(a => { a.log = fixNestedArrays(a.log); });
+    }
     
     const docRef = db.collection('workspaces').doc('team_data');
     docRef.set({ 
@@ -681,10 +700,6 @@ const Store = {
       toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err');
     });
   },
-  
-  status() {}, saved() {}, serialize() { return ''; },
-  guide: async () => true, save: async () => {}, draft: () => null
-};
 window.addEventListener('beforeunload', e => { if (Store.dirty) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); Store.save(); } });
 const App = {
