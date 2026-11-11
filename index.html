@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script> <!-- Thêm dòng này -->
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyALQzQvyx4u1qq6MvR3ee6WuXQBQu5uV2Q",
@@ -647,48 +648,44 @@ const Store = {
     if (!DB) { DB = App.cfg.sample(); }
     App.cfg.migrate && App.cfg.migrate(DB);
 
-    // KẾT NỐI FIREBASE REALTIME
     const docRef = db.collection('workspaces').doc('team_data');
     this.unsubscribe = docRef.onSnapshot((doc) => {
       if (doc.exists) {
         const cloudData = doc.data().payload;
         if (cloudData) {
-          const cloudStr = JSON.stringify(cloudData);
-          const localStr = JSON.stringify(DB);
-          
-          // Nếu dữ liệu trên mây khác dữ liệu trên máy thì mới cập nhật lại
-          if (cloudStr !== localStr) {
+          if (JSON.stringify(cloudData) !== JSON.stringify(DB)) {
             DB = cloudData;
             App.cfg.migrate && App.cfg.migrate(DB);
-            if (window.appInitialized) App.render(); // Vẽ lại giao diện
+            if (window.appInitialized) App.render(); 
           }
         }
       } else {
-        // Lần đầu chạy (Database trống), tự động đẩy dữ liệu mẫu lên
         docRef.set({ payload: DB });
       }
     });
   },
   
   changed() { 
-    // GỬI NGAY LẬP TỨC LÊN FIREBASE (Không đợi chờ gì cả)
+    const el = $('#saveState'); 
+    if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
+    
+    // XÓA BỎ CÁC GIÁ TRỊ UNDEFINED BẰNG CÁCH ÉP QUA JSON
+    const cleanDB = JSON.parse(JSON.stringify(DB)); 
+    
     const docRef = db.collection('workspaces').doc('team_data');
     docRef.set({ 
-      payload: DB, 
+      payload: cleanDB, 
       updatedAt: new Date().toISOString() 
     }).then(() => {
-      const el = $('#saveState'); 
       if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud';
     }).catch(e => {
       console.error("Lỗi lưu Firebase:", e);
-      toast('Lỗi kết nối, không thể lưu dữ liệu!', 'err');
+      if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!';
+      toast('Lỗi kết nối Firebase. Hãy kiểm tra lại mạng.', 'err', 5000);
     });
-    
-    const el = $('#saveState'); 
-    if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
   },
   
-  status() {}, // Bỏ qua các hàm không cần thiết
+  status() {}, 
   saved() {},
   serialize() { return ''; },
   guide: async () => true,
@@ -727,7 +724,14 @@ const App = {
     document.title = v.title + ' · ' + App.cfg.title;
     const c = $$('.nav a').find(a => a.dataset.nav === App.cur); if (c && v.count) { const cn = c.querySelector('.cnt'); if (cn) cn.textContent = v.count(); }
   },
-  changed(rerender = true) { Store.changed(); if (rerender) App.render(); }
+  changed(rerender = true) { 
+    try {
+      Store.changed(); 
+    } catch (e) {
+      console.error("Lỗi đồng bộ (không sao):", e);
+    }
+    if (rerender) App.render(); 
+  }
 };
 Object.assign(ACT, {
   saveFile: () => Store.save(),
@@ -2243,40 +2247,42 @@ document.addEventListener('DOMContentLoaded', () => {
   async function checkPassword() {
       const enteredPass = loginPassword.value;
       try {
-          const docRef = db.collection('config').doc('settings');
-          const doc = await docRef.get();
+          // Đăng nhập bằng tài khoản Admin đã tạo trên Firebase
+          await firebase.auth().signInWithEmailAndPassword("admin@giaoviec.com", enteredPass);
           
-          if (doc.exists && doc.data().password === enteredPass) {
-              loginScreen.style.display = 'none'; 
-              
-              if (!window.appInitialized) {
-                   window.appInitialized = true; 
-                   
-                   // --- KHỞI TẠO APP ---
-                   App.init({
-                     id: 'gantt-2modules', title: 'Giao việc & Chuyên đề', tagline: 'Giao việc · Chuyên đề', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
-                     palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
-                     sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
-                     counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
-                     nav: [
-                       { group: 'Tổng quan', items: ['dashboard'] },
-                       { group: 'Giao việc', items: ['tasks'] },
-                       { group: 'Chuyên đề Cải tiến', items: ['topics'] },
-                       { group: 'Quản lý', items: ['people'] },
-                       { group: 'Thiết lập', items: ['caidat'] }
-                     ],
-                     views: { dashboard: vDashboard, topics: vTopics, tasks: vTasks, people: vPeople, caidat: vSet }
-                   });
-                   // ---------------------
-                   
-                   toast('Đăng nhập thành công!', 'ok');
-              }
-          } else {
-              loginError.style.display = 'block';
+          // Nếu không có lỗi văng ra -> Mật khẩu đúng
+          loginScreen.style.display = 'none'; 
+          
+          if (!window.appInitialized) {
+               window.appInitialized = true; 
+               
+               // --- KHỞI TẠO APP ---
+               App.init({
+                 id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
+                 palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
+                 sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
+                 counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
+                 nav: [
+                   { group: 'Tổng quan', items: ['dashboard'] },
+                   { group: 'Giao việc', items: ['tasks'] },
+                   { group: 'Chuyên đề Cải tiến', items: ['topics'] },
+                   { group: 'Quản lý', items: ['people'] },
+                   { group: 'Thiết lập', items: ['caidat'] }
+                 ],
+                 views: { dashboard: vDashboard, topics: vTopics, tasks: vTasks, people: vPeople, caidat: vSet }
+               });
+               // ---------------------
+               
+               toast('Đăng nhập thành công!', 'ok');
           }
       } catch (error) {
-          console.error("Lỗi chi tiết:", error);
-          alert("Lỗi kết nối Firebase: " + error.message);
+          console.error("Lỗi đăng nhập:", error);
+          // Nếu sai mật khẩu, Firebase sẽ báo lỗi auth/wrong-password
+          if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
+              loginError.style.display = 'block'; // Hiện dòng chữ đỏ "Mật khẩu không đúng"
+          } else {
+              alert("Lỗi kết nối: " + error.message);
+          }
       }
   }
 
