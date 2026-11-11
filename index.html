@@ -700,6 +700,10 @@ const Store = {
       toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err');
     });
   },
+  
+  status() {}, saved() {}, serialize() { return ''; },
+  guide: async () => true, save: async () => {}, draft: () => null
+};
 window.addEventListener('beforeunload', e => { if (Store.dirty) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); Store.save(); } });
 const App = {
