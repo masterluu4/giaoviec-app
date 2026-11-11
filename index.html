@@ -639,33 +639,30 @@ const IDB = {
   async del(k) { const db = await IDB.open(); return new Promise(res => { const t = db.transaction('h', 'readwrite'); t.objectStore('h').delete(k); t.oncomplete = () => res(); t.onerror = () => res(); }); }
 };
 const Store = {
-  dirty: false, timer: null, unsubscribe: null,
+  dirty: false, timer: null, unsubscribe: null, isLocalUpdate: false,
   fileName() { return 'Online DB'; },
   
   load() {
-    // 1. Tải dữ liệu mẫu tạm thời trong lúc chờ kết nối Firebase
     const t = ($('#app-data') || {}).textContent || '';
     try { DB = t.trim() ? JSON.parse(t) : null; } catch (e) { DB = null; }
     if (!DB) { DB = App.cfg.sample(); DB._meta = { sample: true }; }
     DB._meta = DB._meta || {};
     App.cfg.migrate && App.cfg.migrate(DB);
 
-    // 2. KẾT NỐI FIREBASE LẤY DỮ LIỆU REALTIME
     const docRef = db.collection('workspaces').doc('team_data');
     this.unsubscribe = docRef.onSnapshot((doc) => {
       if (doc.exists) {
         const cloudData = doc.data().payload;
-        if (cloudData) {
-          // Nếu có người khác vừa sửa, tự động cập nhật lại giao diện
-          if (JSON.stringify(cloudData) !== JSON.stringify(DB) && !Store.dirty) {
+        // Nếu KHÔNG PHẢI do máy này vừa gửi lên, thì mới cập nhật
+        if (cloudData && !Store.isLocalUpdate) {
+          if (JSON.stringify(cloudData) !== JSON.stringify(DB)) {
             DB = cloudData;
             App.cfg.migrate && App.cfg.migrate(DB);
-            App.render(); 
-            toast('Dữ liệu vừa được đồng nghiệp cập nhật!', 'ok');
+            if (window.appInitialized) App.render(); 
+            toast('Dữ liệu vừa được cập nhật từ máy khác!', 'ok');
           }
         }
       } else {
-        // Lần đầu chạy (Database trống), tự động đẩy dữ liệu mẫu lên
         docRef.set({ payload: DB });
       }
     });
@@ -676,25 +673,32 @@ const Store = {
     Store.status(); 
     clearTimeout(Store.timer); 
     Store.timer = setTimeout(() => {
-      // Đợi 1 giây sau khi ngừng thao tác mới đẩy lên Cloud (tránh lag)
       const docRef = db.collection('workspaces').doc('team_data');
+      Store.isLocalUpdate = true; // Bật cờ: "Tao đang gửi dữ liệu lên đấy!"
       docRef.set({ payload: DB, updatedAt: new Date().toISOString() })
-        .then(() => { Store.dirty = false; Store.status(); })
-        .catch(e => toast('Lỗi đồng bộ: ' + e.message, 'err'));
-    }, 1000); 
+        .then(() => { 
+          Store.dirty = false; 
+          Store.status(); 
+          // Đợi 1.5 giây cho Firebase xử lý xong rồi tắt cờ
+          setTimeout(() => Store.isLocalUpdate = false, 1500); 
+        })
+        .catch(e => { 
+          Store.isLocalUpdate = false;
+          toast('Lỗi lưu Firebase: ' + e.message, 'err'); 
+        });
+    }, 500); // Giảm thời gian chờ xuống 0.5s cho mượt
   },
   
   status() { 
     const el = $('#saveState'); 
     if (!el) return; 
     el.classList.toggle('dirty', Store.dirty); 
-    el.querySelector('span').textContent = Store.dirty ? 'Đang đồng bộ lên Cloud...' : 'Đã đồng bộ Online'; 
+    el.querySelector('span').textContent = Store.dirty ? 'Đang đồng bộ...' : 'Đã đồng bộ Online'; 
   },
-  
   saved() { Store.dirty = false; Store.status(); },
   serialize() { return ''; },
   guide: async () => true,
-  save: async () => { toast('Hệ thống tự động lưu Online, không cần bấm!', 'ok'); },
+  save: async () => { toast('Tự động lưu Online', 'ok'); },
   draft: () => null
 };
 window.addEventListener('beforeunload', e => { if (Store.dirty) { e.preventDefault(); e.returnValue = ''; } });
@@ -1662,7 +1666,7 @@ function assignForm(a, isNew) {
 }
 const vTasks = {
   title: 'Quản lý Giao việc', icon: 'list', desc: 'Giao việc, theo dõi qua danh sách, Kanban, lịch, Gantt',
-  count: () => DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy').length || '',
+  count: () => DB.assignments.length || '',
   tools: () => `<button class="btn pri" data-act="asmAdd">${ic('plus')} Giao việc</button>`,
   render(el) {
     if (UI.sub === 'detail' && UI.asmId) return renderTaskDetail(el);
