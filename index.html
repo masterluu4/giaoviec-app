@@ -707,7 +707,7 @@ const App = {
     Store.load();
     App.views.data = App.views.data || DataScreen;
     const navHTML = cfg.nav.map(g => `<div class="nav-group">${g.group}</div>${g.items.map(id => { const v = App.views[id]; if (!v) return ''; const cnt = v.count ? v.count() : ''; return `<a data-nav="${id}">${ic(v.icon)}<span>${v.label || v.title}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</a>`; }).join('')}`).join('') + `<div class="nav-group">Hệ thống</div><a data-nav="data">${ic('database')}<span>Dữ liệu & sao lưu</span></a>`;
-    $('#app').innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand"><div class="logo">${ic(cfg.icon)}</div><div><b>${cfg.title}</b><small>${cfg.tagline}</small></div></div><div class="side-top"><div class="save-state" id="saveState"><i></i><span></span></div><button class="btn-save" style="background:#10b981; color:#fff; cursor:default" data-act="saveFile">${ic('check')} Cloud Sync Bật</button></div><nav class="nav">${navHTML}</nav><div class="side-foot"><div class="credit">v1.0 · Giai đoạn 1 (offline)</div></div></aside><div class="backdrop" data-act="navClose"></div><main class="main"><header class="topbar"><button class="ibtn menu-btn" data-act="navOpen">${ic('menu')}</button><div><h1 id="vTitle"></h1><p id="vDesc"></p></div><div class="top-actions" id="vTools"></div></header><section class="content"><div id="draftBox"></div><div id="view"></div></section></main></div>`;
+    $('#app').innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand"><div class="logo">${ic(cfg.icon)}</div><div><b>${cfg.title}</b><small>${cfg.tagline}</small></div></div><div class="side-top"><div class="save-state" id="saveState"><i></i><span></span></div><button class="btn-save" style="background:#10b981; color:#fff; cursor:default" data-act="saveFile">${ic('check')} Cloud Sync Bật</button></div><nav class="nav">${navHTML}</nav><div class="side-foot"><div class="credit">v1.0 · AD Mr.luu</div></div></aside><div class="backdrop" data-act="navClose"></div><main class="main"><header class="topbar"><button class="ibtn menu-btn" data-act="navOpen">${ic('menu')}</button><div><h1 id="vTitle"></h1><p id="vDesc"></p></div><div class="top-actions" id="vTools"></div></header><section class="content"><div id="draftBox"></div><div id="view"></div></section></main></div>`;
     $('#app').addEventListener('click', e => { const a = e.target.closest('[data-nav]'); if (a) { e.preventDefault(); App.go(a.dataset.nav); document.body.classList.remove('nav-open'); } });
     Store.status();
     const d = Store.draft();
@@ -759,7 +759,7 @@ function addCSS(t) { const s = document.createElement('style'); s.dataset.runtim
 function onVal(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('change', () => fn(el.value)); }
 function selectHTML(id, opts, val, cls = '') { return `<select class="inp ${cls}" id="${id}">${optList(opts).map(o => `<option value="${esc(o.value)}" ${String(o.value) === String(val) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`; }
 function settingsCard(title, fields, obj, cols = 2, onSaved) { const id = 'sf' + Math.random().toString(36).slice(2, 7); setTimeout(() => { const box = document.getElementById(id); if (!box) return; box.querySelector('[data-sfsave]').onclick = () => { Object.assign(obj, readForm(box, fields)); App.changed(false); onSaved && onSaved(); toast('Đã cập nhật cài đặt', 'ok'); }; }); return `<div id="${id}">${card(title, formHTML(fields, obj, cols) + `<div class="row mt"><button class="btn pri" data-sfsave>${ic('check')} Lưu cài đặt</button></div>`)}</div>`; }
-const COMPANY_FIELDS = [{ key: 'ten', label: 'Tên công ty / cửa hàng', full: true }, { key: 'diaChi', label: 'Địa chỉ', full: true }, { key: 'sdt', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'mst', label: 'Mã số thuế' }, { key: 'website', label: 'Website' }, { key: 'logo', label: 'Logo (hiện trên bản in)', type: 'image', max: 300, full: true }];
+const COMPANY_FIELDS = [{ key: 'ten', label: 'Tên phòng ban', full: true }, { key: 'diaChi', label: 'Địa chỉ', full: true }, { key: 'sdt', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'mst', label: 'Zalo' }, { key: 'website', label: 'Website' }, { key: 'logo', label: 'Logo (hiện trên bản in)', type: 'image', max: 300, full: true }];
 </script>
 
 <script>
@@ -778,7 +778,7 @@ const PRI_B = { 'Cao': 'b-red', 'Trung bình': 'b-amber', 'Thấp': '' };
 const PCOL = ['#0d9488', '#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'];
 
 /* === Dữ liệu === */
-function defaultSettings() { return { company: { ten: 'Công ty TNHH Bán lẻ An Phát', diaChi: '88 Nguyễn Trãi, Thanh Xuân, Hà Nội', sdt: '0912 345 678', email: 'contact@anphat.vn', mst: '', website: 'anphat.vn', logo: '' }, calMode: 'cal', warnDays: 7 }; }
+function defaultSettings() { return { company: { ten: 'Phòng QLCL KCN', diaChi: 'KCN Cơ Khí Ô tô Chu Lai Trường Hải, Xã Núi Thành, Thành phố Đà Nẵng', sdt: '0335.573.141', email: 'mrluu4@gmail.com', mst: '', website: 'mrluu4', logo: '' }, calMode: 'cal', warnDays: 7 }; }
 function emptyDB() { return { settings: defaultSettings(), people: [], topics: [], topicTasks: [], assignments: [] }; }
 function migrate(db) {
   db.settings = Object.assign(defaultSettings(), db.settings || {});
@@ -2256,7 +2256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                    
                    // --- KHỞI TẠO APP ---
                    App.init({
-                     id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
+                     id: 'gantt-2modules', title: 'Giao việc & Chuyên đề', tagline: 'Giao việc · Chuyên đề', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
                      palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
                      sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
                      counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
