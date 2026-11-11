@@ -639,66 +639,60 @@ const IDB = {
   async del(k) { const db = await IDB.open(); return new Promise(res => { const t = db.transaction('h', 'readwrite'); t.objectStore('h').delete(k); t.oncomplete = () => res(); t.onerror = () => res(); }); }
 };
 const Store = {
-  dirty: false, timer: null, unsubscribe: null, isLocalUpdate: false,
   fileName() { return 'Online DB'; },
   
   load() {
     const t = ($('#app-data') || {}).textContent || '';
     try { DB = t.trim() ? JSON.parse(t) : null; } catch (e) { DB = null; }
-    if (!DB) { DB = App.cfg.sample(); DB._meta = { sample: true }; }
-    DB._meta = DB._meta || {};
+    if (!DB) { DB = App.cfg.sample(); }
     App.cfg.migrate && App.cfg.migrate(DB);
 
+    // KẾT NỐI FIREBASE REALTIME
     const docRef = db.collection('workspaces').doc('team_data');
     this.unsubscribe = docRef.onSnapshot((doc) => {
       if (doc.exists) {
         const cloudData = doc.data().payload;
-        // Nếu KHÔNG PHẢI do máy này vừa gửi lên, thì mới cập nhật
-        if (cloudData && !Store.isLocalUpdate) {
-          if (JSON.stringify(cloudData) !== JSON.stringify(DB)) {
+        if (cloudData) {
+          const cloudStr = JSON.stringify(cloudData);
+          const localStr = JSON.stringify(DB);
+          
+          // Nếu dữ liệu trên mây khác dữ liệu trên máy thì mới cập nhật lại
+          if (cloudStr !== localStr) {
             DB = cloudData;
             App.cfg.migrate && App.cfg.migrate(DB);
-            if (window.appInitialized) App.render(); 
-            toast('Dữ liệu vừa được cập nhật từ máy khác!', 'ok');
+            if (window.appInitialized) App.render(); // Vẽ lại giao diện
           }
         }
       } else {
+        // Lần đầu chạy (Database trống), tự động đẩy dữ liệu mẫu lên
         docRef.set({ payload: DB });
       }
     });
   },
   
   changed() { 
-    Store.dirty = true; 
-    Store.status(); 
-    clearTimeout(Store.timer); 
-    Store.timer = setTimeout(() => {
-      const docRef = db.collection('workspaces').doc('team_data');
-      Store.isLocalUpdate = true; // Bật cờ: "Tao đang gửi dữ liệu lên đấy!"
-      docRef.set({ payload: DB, updatedAt: new Date().toISOString() })
-        .then(() => { 
-          Store.dirty = false; 
-          Store.status(); 
-          // Đợi 1.5 giây cho Firebase xử lý xong rồi tắt cờ
-          setTimeout(() => Store.isLocalUpdate = false, 1500); 
-        })
-        .catch(e => { 
-          Store.isLocalUpdate = false;
-          toast('Lỗi lưu Firebase: ' + e.message, 'err'); 
-        });
-    }, 500); // Giảm thời gian chờ xuống 0.5s cho mượt
+    // GỬI NGAY LẬP TỨC LÊN FIREBASE (Không đợi chờ gì cả)
+    const docRef = db.collection('workspaces').doc('team_data');
+    docRef.set({ 
+      payload: DB, 
+      updatedAt: new Date().toISOString() 
+    }).then(() => {
+      const el = $('#saveState'); 
+      if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud';
+    }).catch(e => {
+      console.error("Lỗi lưu Firebase:", e);
+      toast('Lỗi kết nối, không thể lưu dữ liệu!', 'err');
+    });
+    
+    const el = $('#saveState'); 
+    if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
   },
   
-  status() { 
-    const el = $('#saveState'); 
-    if (!el) return; 
-    el.classList.toggle('dirty', Store.dirty); 
-    el.querySelector('span').textContent = Store.dirty ? 'Đang đồng bộ...' : 'Đã đồng bộ Online'; 
-  },
-  saved() { Store.dirty = false; Store.status(); },
+  status() {}, // Bỏ qua các hàm không cần thiết
+  saved() {},
   serialize() { return ''; },
   guide: async () => true,
-  save: async () => { toast('Tự động lưu Online', 'ok'); },
+  save: async () => {},
   draft: () => null
 };
 window.addEventListener('beforeunload', e => { if (Store.dirty) { e.preventDefault(); e.returnValue = ''; } });
