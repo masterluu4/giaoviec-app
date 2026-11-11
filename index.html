@@ -1712,17 +1712,16 @@ function renderAsmList(body, all, counts) {
   onVal('asmP', v => { f.person = v; App.render(); });
   onVal('asmPri', v => { f.priority = v; App.render(); });
   const rows = assignmentsFiltered();
-  table($('#asmT'), { id: 'asm', rows, ph: 'Tìm công việc...', searchText: r => [r.ma, r.moTa, r.lyDoTre].join(' '), onRow: r => { UI.sub = 'detail'; UI.asmId = r.id; UI.tab.taskDetail = 'info'; App.render(); },
     columns: [
-      { key: 'ma', label: 'Mã', render: r => `<span class="badge b-p">${esc(r.ma)}</span>` },
-      { key: 'ten', label: 'Công việc', render: r => `<b>${esc(r.ten)}</b>${r.moTa ? `<br><small class="muted">${esc(r.moTa.slice(0, 60))}${r.moTa.length > 60 ? '…' : ''}</small>` : ''}` },
-      { key: 'nguoiGiao', label: 'Người giao', val: r => personOf(r.nguoiGiao)?.ten || '', render: r => personOf(r.nguoiGiao) ? `<span class="who">${avatar(personOf(r.nguoiGiao), 'sm')}${esc(personOf(r.nguoiGiao).ten)}</span>` : '—' },
-      { key: 'nguoiNhan', label: 'Người nhận', val: r => personOf(r.nguoiNhan)?.ten || '', render: r => personOf(r.nguoiNhan) ? `<span class="who">${avatar(personOf(r.nguoiNhan), 'sm')}${esc(personOf(r.nguoiNhan).ten)}</span>` : '—' },
-      { key: 'deadline', label: 'Hạn', render: r => `<span style="color:${r.late ? '#dc2626' : '#475467'};font-weight:${r.late ? 700 : 400}">${F.date(r.deadline)}</span>${r.late ? `<br><small style="color:#dc2626">Trễ ${-r.daysLeft} ngày</small>` : r.daysLeft >= 0 && r.daysLeft <= 3 && r.trangThai !== 'Hoàn thành' ? `<br><small style="color:#b45309">Còn ${r.daysLeft} ngày</small>` : ''}` },
-      { key: 'ck', label: 'Checklist', val: r => r.ckTotal ? r.ckDone + '/' + r.ckTotal : '', render: r => r.ckTotal ? `<span class="badge">${r.ckDone}/${r.ckTotal}</span>` : '<span class="muted">—</span>' },
-      { key: 'pct', label: 'Tiến độ', sortVal: r => r.pct, render: r => pbar(r.pct, ASM_C[r.trangThai]) },
-      { key: 'trangThai', label: 'Trạng thái', render: r => asmBadge(r.trangThai) },
-      { key: 'uuTien', label: 'Ưu tiên', render: r => priBadge(r.uuTien) }
+      { key: 'ma', label: 'Mã', w: '80px', render: r => `<span class="badge b-p">${esc(r.ma)}</span>` },
+      { key: 'ten', label: 'Công việc', cls: 'wrap', w: '35%', render: r => `<b>${esc(r.ten)}</b>${r.moTa ? `<br><small class="muted">${esc(r.moTa.slice(0, 60))}${r.moTa.length > 60 ? '…' : ''}</small>` : ''}` },
+      { key: 'nguoiGiao', label: 'Người giao', w: '130px', val: r => personOf(r.nguoiGiao)?.ten || '', render: r => personOf(r.nguoiGiao) ? `<span class="who">${avatar(personOf(r.nguoiGiao), 'sm')}${esc(personOf(r.nguoiGiao).ten)}</span>` : '—' },
+      { key: 'nguoiNhan', label: 'Người nhận', w: '130px', val: r => personOf(r.nguoiNhan)?.ten || '', render: r => personOf(r.nguoiNhan) ? `<span class="who">${avatar(personOf(r.nguoiNhan), 'sm')}${esc(personOf(r.nguoiNhan).ten)}</span>` : '—' },
+      { key: 'deadline', label: 'Hạn', w: '100px', render: r => `<span style="color:${r.late ? '#dc2626' : '#475467'};font-weight:${r.late ? 700 : 400}">${F.date(r.deadline)}</span>${r.late ? `<br><small style="color:#dc2626">Trễ ${-r.daysLeft} ngày</small>` : r.daysLeft >= 0 && r.daysLeft <= 3 && r.trangThai !== 'Hoàn thành' ? `<br><small style="color:#b45309">Còn ${r.daysLeft} ngày</small>` : ''}` },
+      { key: 'ck', label: 'Checklist', w: '80px', val: r => r.ckTotal ? r.ckDone + '/' + r.ckTotal : '', render: r => r.ckTotal ? `<span class="badge">${r.ckDone}/${r.ckTotal}</span>` : '<span class="muted">—</span>' },
+      { key: 'pct', label: 'Tiến độ', w: '120px', sortVal: r => r.pct, render: r => pbar(r.pct, ASM_C[r.trangThai]) },
+      { key: 'trangThai', label: 'Trạng thái', w: '110px', render: r => asmBadge(r.trangThai) },
+      { key: 'uuTien', label: 'Ưu tiên', w: '90px', render: r => priBadge(r.uuTien) }
     ],
     actions: r => `<button class="ibtn" data-act="asmView" data-id="${r.id}" data-tip="Xem">${ic('eye')}</button><button class="ibtn del" data-act="asmDel" data-id="${r.id}" data-tip="Xóa">${ic('trash')}</button>`,
     empty: 'Chưa có việc nào. Bấm "Giao việc".'
@@ -2170,10 +2169,10 @@ const vDashboard = {
       table(el2, { id: 'soon', rows: soonTasks, pageSize: 5, 
         onRow: a => { App.go('tasks'); setTimeout(() => { UI.sub = 'detail'; UI.asmId = a.id; UI.tab.taskDetail = 'info'; App.render(); }, 50); },
         columns: [
-          { key: 'ten', label: 'Công việc', render: a => `<b>${esc(a.ten)}</b>` },
-          { key: 'nguoiNhan', label: 'Người nhận', val: a => personOf(a.nguoiNhan)?.ten || '', render: a => personOf(a.nguoiNhan) ? esc(personOf(a.nguoiNhan).ten.split(' ').slice(-2).join(' ')) : '—' },
-          { key: 'deadline', label: 'Hạn chót', render: a => F.date(a.deadline) },
-          { key: 'daysLeft', label: 'Còn lại', render: a => `<span class="badge ${a.daysLeft <= 2 ? 'b-red' : a.daysLeft <= 5 ? 'b-amber' : 'b-blue'}">${a.daysLeft} ngày</span>` }
+          { key: 'ten', label: 'Công việc', cls: 'wrap', w: '45%', render: a => `<b>${esc(a.ten)}</b>` },
+          { key: 'nguoiNhan', label: 'Người nhận', w: '20%', val: a => personOf(a.nguoiNhan)?.ten || '', render: a => personOf(a.nguoiNhan) ? esc(personOf(a.nguoiNhan).ten.split(' ').slice(-2).join(' ')) : '—' },
+          { key: 'deadline', label: 'Hạn chót', w: '15%', render: a => F.date(a.deadline) },
+          { key: 'daysLeft', label: 'Còn lại', w: '20%', render: a => `<span class="badge ${a.daysLeft <= 2 ? 'b-red' : a.daysLeft <= 5 ? 'b-amber' : 'b-blue'}">${a.daysLeft} ngày</span>` }
         ], search: false 
       });
     }, 0);
