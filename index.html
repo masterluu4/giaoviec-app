@@ -6,7 +6,6 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%230d9488%22%2F%3E%3Cpath%20d%3D%22M9%2010h14M9%2016h14M9%2022h9%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<!-- BẮT ĐẦU FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 <script>
@@ -20,44 +19,6 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  // BẮT ĐẦU LOGIC ĐĂNG NHẬP
-  document.addEventListener('DOMContentLoaded', () => {
-    const loginScreen = document.getElementById('loginScreen');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginError = document.getElementById('loginError');
-
-    async function checkPassword() {
-        const enteredPass = loginPassword.value;
-        try {
-            const docRef = db.collection('config').doc('settings');
-            const doc = await docRef.get();
-            if (doc.exists && doc.data().password === enteredPass) {
-                loginScreen.style.display = 'none'; // Ẩn màn hình đăng nhập
-                
-                // BƯỚC CUỐI CÙNG: KHỞI TẠO APP TẠI ĐÂY
-                if (!window.appInitialized) {
-                     window.appInitialized = true; 
-                     // LƯU Ý: BẠN PHẢI CHUYỂN HÀM App.init(...) TỪ DƯỚI ĐÁY FILE VÀO ĐÂY (Xem Phần 2 bên dưới)
-                     
-                     // Tạm thời tôi để một nút khởi tạo ở đây, bạn sẽ thay bằng App.init
-                     App.init({ ... }); // <-- Sẽ nói rõ ở Phần 2
-                }
-            } else {
-                loginError.style.display = 'block';
-            }
-        } catch (error) {
-            console.error("Lỗi:", error);
-            alert("Không thể kết nối máy chủ. Kiểm tra mạng hoặc cấu hình Firebase.");
-        }
-    }
-
-    loginBtn.addEventListener('click', checkPassword);
-    loginPassword.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') checkPassword();
-    });
-  });
-  // KẾT THÚC LOGIC ĐĂNG NHẬP
 </script>
 <!-- KẾT THÚC FIREBASE -->
 <style>
@@ -2284,19 +2245,16 @@ document.addEventListener('DOMContentLoaded', () => {
   async function checkPassword() {
       const enteredPass = loginPassword.value;
       try {
-          // Lấy mật khẩu từ Firebase
           const docRef = db.collection('config').doc('settings');
           const doc = await docRef.get();
           
           if (doc.exists && doc.data().password === enteredPass) {
-              // Nếu đúng mật khẩu -> Ẩn màn hình login
               loginScreen.style.display = 'none'; 
               
-              // Khởi tạo ứng dụng
               if (!window.appInitialized) {
                    window.appInitialized = true; 
                    
-                   // --- BẮT ĐẦU APP.INIT GỐC CỦA BẠN ---
+                   // --- KHỞI TẠO APP ---
                    App.init({
                      id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
                      palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
@@ -2311,7 +2269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      ],
                      views: { dashboard: vDashboard, topics: vTopics, tasks: vTasks, people: vPeople, caidat: vSet }
                    });
-                   // --- KẾT THÚC APP.INIT GỐC ---
+                   // ---------------------
                    
                    toast('Đăng nhập thành công!', 'ok');
               }
@@ -2319,12 +2277,11 @@ document.addEventListener('DOMContentLoaded', () => {
               loginError.style.display = 'block';
           }
       } catch (error) {
-          console.error("Lỗi khi kiểm tra mật khẩu:", error);
-          alert("Không thể kết nối máy chủ. Vui lòng kiểm tra lại cấu hình Firebase.");
+          console.error("Lỗi chi tiết:", error);
+          alert("Lỗi kết nối Firebase: " + error.message);
       }
   }
 
-  // Gắn sự kiện click và enter cho nút đăng nhập
   loginBtn.addEventListener('click', checkPassword);
   loginPassword.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') checkPassword();
