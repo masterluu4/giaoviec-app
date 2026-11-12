@@ -288,6 +288,15 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .ai-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; white-space: normal; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.05); margin-bottom: 6px; }
 .ai-msg.user { background: #ccfbf1; color: #042f2e; align-self: flex-end; border-bottom-right-radius: 2px; }
 .ai-msg.bot { background: #fff; color: #1f2937; align-self: flex-start; border: 1px solid #e6e9f0; border-bottom-left-radius: 2px; }
+/* CSS CHO NÚT SỬA/XÓA TIN NHẮN */
+.chat-bubble-wrap { position: relative; display: flex; flex-direction: column; max-width: 85%; margin-bottom: 6px; }
+.chat-bubble-wrap.me { align-self: flex-end; align-items: flex-end; }
+.chat-bubble-wrap.them { align-self: flex-start; align-items: flex-start; }
+.chat-actions { display: none; gap: 8px; margin-top: 2px; font-size: 11px; padding: 0 4px; }
+.chat-bubble-wrap:hover .chat-actions { display: flex; }
+.chat-action-btn { background: transparent; border: none; cursor: pointer; color: #64748b; padding: 0; display: flex; align-items: center; gap: 4px; }
+.chat-action-btn:hover { color: var(--p); }
+.chat-action-btn.del:hover { color: #dc2626; }
 .ai-foot { padding: 12px; background: #fff; border-top: 1px solid #e6e9f0; display: flex; gap: 8px; }
 .ai-foot input { flex: 1; border: 1px solid #d6dce7; border-radius: 8px; padding: 8px 12px; outline: none; }
 .ai-foot button { background: var(--p); color: #fff; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; font-weight: 600; }
@@ -2222,21 +2231,63 @@ document.addEventListener('DOMContentLoaded', () => {
   chatDocRef.onSnapshot((doc) => {
       if (doc.exists) {
           const messages = doc.data().messages || [];
-          // Chỉ vẽ lại nếu có tin nhắn mới
+          // Chỉ vẽ lại nếu có tin nhắn mới hoặc có thay đổi
           if (messages.length !== lastChatCount) {
               chatBody.innerHTML = messages.map(msg => {
                   const isAI = msg.sender === 'AI Bot';
-                  const isMe = msg.senderId === userSelect.value;
+                  const isMe = msg.senderId === userSelect.value && !isAI;
                   const bubbleClass = isAI ? 'ai-msg bot' : (isMe ? 'ai-msg user' : 'ai-msg bot');
-                  const alignStyle = isMe ? 'align-self: flex-end; background: #e0f2fe; color: #1e3a8a;' : (isAI ? 'align-self: flex-start; background: #f0fdf4; border-color: #bbf7d0;' : 'align-self: flex-start;');
+                  const alignStyle = isMe ? 'background: #ccfbf1; color: #042f2e;' : (isAI ? 'background: #f0fdf4; border-color: #bbf7d0;' : '');
                   
-                  return `<div class="${bubbleClass}" style="${alignStyle}">
-                      ${!isMe ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 4px; font-weight: bold;">${esc(msg.sender)}</div>` : ''}
-                      ${esc(msg.text).replace(/\n/g, '<br>')}
+                  // Lấy ID tin nhắn (fallback dùng time nếu là tin nhắn cũ chưa có ID)
+                  const msgId = msg.id || msg.time;
+                  
+                  // Tin nhắn đã sửa sẽ có thêm chữ (đã sửa)
+                  const editedTag = msg.isEdited ? ` <span style="font-size:10px;color:#94a3b8;font-style:italic;">(đã sửa)</span>` : '';
+
+                  return `<div class="chat-bubble-wrap ${isMe ? 'me' : 'them'}">
+                      ${(!isMe && !isAI) ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 2px; font-weight: bold; padding-left:4px;">${esc(msg.sender)}</div>` : ''}
+                      <div class="${bubbleClass}" style="${alignStyle}">
+                          ${esc(msg.text).replace(/\n/g, '<br>')}${editedTag}
+                      </div>
+                      <div class="chat-actions">
+                          ${isMe ? `<button class="chat-action-btn" data-act="editChat" data-id="${msgId}">✏️ Sửa</button>` : ''}
+                          ${(isMe || isAI) ? `<button class="chat-action-btn del" data-act="delChat" data-id="${msgId}">🗑️ Xóa</button>` : ''}
+                      </div>
                   </div>`;
               }).join('');
               chatBody.scrollTop = chatBody.scrollHeight;
               lastChatCount = messages.length;
+          }
+      }
+  });
+
+  // LẮNG NGHE SỰ KIỆN SỬA/XÓA
+  chatBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const msgId = btn.dataset.id;
+      
+      const doc = await chatDocRef.get();
+      let messages = doc.data().messages || [];
+      const msgIndex = messages.findIndex(m => (m.id || m.time) === msgId);
+      if (msgIndex === -1) return;
+
+      if (act === 'editChat') {
+          const newText = prompt("Sửa nội dung tin nhắn:", messages[msgIndex].text);
+          if (newText !== null && newText.trim() !== "" && newText !== messages[msgIndex].text) {
+              messages[msgIndex].text = newText.trim();
+              messages[msgIndex].isEdited = true;
+              await chatDocRef.set({ messages }, { merge: true });
+              lastChatCount = 0; // Kích hoạt vẽ lại
+          }
+      } 
+      else if (act === 'delChat') {
+          if (confirm("Bạn có chắc chắn muốn xóa tin nhắn này?")) {
+              messages.splice(msgIndex, 1);
+              await chatDocRef.set({ messages }, { merge: true });
+              lastChatCount = 0; // Kích hoạt vẽ lại
           }
       }
   });
@@ -2282,7 +2333,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await cleanupOldMessages();
 
       // 1. Lưu tin nhắn của người dùng lên Firebase
-      const newMsg = { senderId, sender: senderName, text, time: new Date().toISOString() };
+      const newMsg = { id: uid(), senderId, sender: senderName, text, time: new Date().toISOString() };
       await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(newMsg) }, { merge: true });
 
       // 2. Kiểm tra xem có gọi AI không (Gõ @AI hoặc @ai)
