@@ -2232,7 +2232,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   'Authorization': `Bearer ${GROQ_API_KEY}` 
               },
               body: JSON.stringify({
-                  model: 'llama-3.3-70b-versatile', // Model miễn phí, thông minh của Groq
+                  // Đã thay đổi sang mô hình mới được Groq khuyến nghị
+                  model: 'openai/gpt-oss-120b', 
                   messages: [{ role: 'user', content: prompt }]
               })
           });
@@ -2248,7 +2249,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (e) {
           console.error("Lỗi AI chi tiết:", e);
           loadingMsg.textContent = "Lỗi AI: " + e.message; 
-          loadingMsg.style.color = '#dc2626'; // Đổi màu chữ sang đỏ để dễ nhìn
+          loadingMsg.style.color = '#dc2626'; 
       }
       chatBody.scrollTop = chatBody.scrollHeight;
   }
