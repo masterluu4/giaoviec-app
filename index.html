@@ -285,9 +285,9 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .ai-head { background: var(--p); color: #fff; padding: 12px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 .ai-head button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 18px; }
 .ai-body { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; }
-.ai-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; white-space: pre-wrap; }
-.ai-msg.user { background: var(--p); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
-.ai-msg.bot { background: #fff; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid #e6e9f0; }
+.ai-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; white-space: normal; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.05); margin-bottom: 6px; }
+.ai-msg.user { background: #ccfbf1; color: #042f2e; align-self: flex-end; border-bottom-right-radius: 2px; }
+.ai-msg.bot { background: #fff; color: #1f2937; align-self: flex-start; border: 1px solid #e6e9f0; border-bottom-left-radius: 2px; }
 .ai-foot { padding: 12px; background: #fff; border-top: 1px solid #e6e9f0; display: flex; gap: 8px; }
 .ai-foot input { flex: 1; border: 1px solid #d6dce7; border-radius: 8px; padding: 8px 12px; outline: none; }
 .ai-foot button { background: var(--p); color: #fff; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; font-weight: 600; }
@@ -311,21 +311,31 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 </head>
 <body>
 <div id="app"></div>
-<!-- === KHUNG CHAT AI === -->
-<div id="ai-chat-btn" title="Hỏi trợ lý AI">
+<!-- NÚT VÀ KHUNG CHAT NỘI BỘ -->
+<div id="ai-chat-btn" title="Kênh trao đổi">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 </div>
 <div id="ai-chat-window">
-  <div class="ai-head"><span>✨ Trợ lý AI (Gemini)</span><button id="ai-close">×</button></div>
+  <div class="ai-head" style="flex-wrap: wrap; gap: 8px;">
+    <span>💬 Kênh trao đổi đội nhóm</span>
+    <button id="ai-close" style="margin-left:auto;">×</button>
+    <div style="width: 100%; display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 4px;">
+      <span>Bạn là:</span>
+      <select id="chat-user-select" style="flex: 1; padding: 4px; border-radius: 4px; border: none; color: #1f2937;"></select>
+    </div>
+    <!-- THÊM DÒNG NÀY ĐỂ THÔNG BÁO -->
+    <div style="width: 100%; text-align: center; font-size: 11px; color: #e0f2fe; opacity: 0.8; margin-top: 4px;">
+      (Tin nhắn tự động xóa sau 7 ngày)
+    </div>
+  </div>
   <div class="ai-body" id="ai-body">
-    <div class="ai-msg bot">Chào sếp! Em có thể giúp gì cho sếp hôm nay? (VD: "Tóm tắt tiến độ dự án", "Hôm nay ai đang làm việc?")</div>
+    <!-- Tin nhắn sẽ được load từ Firebase vào đây -->
   </div>
   <div class="ai-foot">
-    <input type="text" id="ai-input" placeholder="Nhập câu hỏi...">
+    <input type="text" id="ai-input" placeholder="Nhập tin nhắn... (Gõ @AI để hỏi trợ lý)">
     <button id="ai-send">Gửi</button>
   </div>
 </div>
-
 <!-- MÀN HÌNH ĐĂNG NHẬP -->
 <div id="loginScreen" style="position:fixed; inset:0; background:#f3f5f9; z-index:9999; display:flex; align-items:center; justify-content:center;">
     <div style="background:#fff; padding:40px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:90%;">
@@ -2183,79 +2193,142 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* === TRỢ LÝ AI GROQ === */
-  // LƯU Ý: Thay thế chuỗi dưới đây bằng API Key Groq của bạn (dạng gsk_...)
-  const GROQ_API_KEY = "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"; 
-  
+  /* === HỆ THỐNG CHAT NỘI BỘ & AI BOT === */
+  const GROQ_API_KEY = "DÁN_API_KEY_GROQ_CỦA_BẠN_VÀO_ĐÂY"; 
   const chatBtn = document.getElementById('ai-chat-btn');
   const chatWindow = document.getElementById('ai-chat-window');
   const chatClose = document.getElementById('ai-close');
   const chatSend = document.getElementById('ai-send');
   const chatInput = document.getElementById('ai-input');
   const chatBody = document.getElementById('ai-body');
+  const userSelect = document.getElementById('chat-user-select');
 
-  if(chatBtn) chatBtn.addEventListener('click', () => chatWindow.classList.add('show'));
+  // Hiển thị danh sách nhân sự vào ô chọn
+  function renderUserSelect() {
+      userSelect.innerHTML = DB.people.map(p => `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
+      // Khôi phục người dùng đã chọn trước đó (nếu có)
+      const savedUser = localStorage.getItem('chat_current_user');
+      if (savedUser && DB.people.find(p => p.id === savedUser)) userSelect.value = savedUser;
+      userSelect.addEventListener('change', (e) => localStorage.setItem('chat_current_user', e.target.value));
+  }
+
+  if(chatBtn) chatBtn.addEventListener('click', () => { chatWindow.classList.add('show'); renderUserSelect(); });
   if(chatClose) chatClose.addEventListener('click', () => chatWindow.classList.remove('show'));
 
-  async function askAI(question) {
-      // Hiển thị tin nhắn của người dùng
-      const userMsg = document.createElement('div');
-      userMsg.className = 'ai-msg user';
-      userMsg.textContent = question;
-      chatBody.appendChild(userMsg);
-      chatBody.scrollTop = chatBody.scrollHeight;
+  // LẮNG NGHE TIN NHẮN TỪ FIREBASE
+  let lastChatCount = 0;
+  const chatDocRef = db.collection('workspaces').doc('chat_data');
+  
+  chatDocRef.onSnapshot((doc) => {
+      if (doc.exists) {
+          const messages = doc.data().messages || [];
+          // Chỉ vẽ lại nếu có tin nhắn mới
+          if (messages.length !== lastChatCount) {
+              chatBody.innerHTML = messages.map(msg => {
+                  const isAI = msg.sender === 'AI Bot';
+                  const isMe = msg.senderId === userSelect.value;
+                  const bubbleClass = isAI ? 'ai-msg bot' : (isMe ? 'ai-msg user' : 'ai-msg bot');
+                  const alignStyle = isMe ? 'align-self: flex-end; background: #e0f2fe; color: #1e3a8a;' : (isAI ? 'align-self: flex-start; background: #f0fdf4; border-color: #bbf7d0;' : 'align-self: flex-start;');
+                  
+                  return `<div class="${bubbleClass}" style="${alignStyle}">
+                      ${!isMe ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 4px; font-weight: bold;">${esc(msg.sender)}</div>` : ''}
+                      ${esc(msg.text).replace(/\n/g, '<br>')}
+                  </div>`;
+              }).join('');
+              chatBody.scrollTop = chatBody.scrollHeight;
+              lastChatCount = messages.length;
+          }
+      }
+  });
+  // HÀM DỌN DẸP TIN NHẮN CŨ
+  async function cleanupOldMessages() {
+      try {
+          const doc = await chatDocRef.get();
+          if (doc.exists) {
+              let messages = doc.data().messages || [];
+              const originalLength = messages.length;
+              
+              // 1. Lọc bỏ tin nhắn cũ hơn 7 ngày
+              const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+              messages = messages.filter(msg => new Date(msg.time).getTime() >= oneWeekAgo);
+              
+              // 2. Chỉ giữ lại tối đa 500 tin nhắn gần nhất (để chống tràn 1MB)
+              if (messages.length > 500) {
+                  messages = messages.slice(-500);
+              }
+
+              // Nếu có sự thay đổi (đã xóa bớt), thì cập nhật lại lên Firebase
+              if (messages.length < originalLength) {
+                  await chatDocRef.set({ messages: messages }, { merge: true });
+                  console.log(`Đã dọn dẹp ${originalLength - messages.length} tin nhắn cũ.`);
+              }
+          }
+      } catch (e) {
+          console.error("Lỗi dọn dẹp tin nhắn:", e);
+      }
+  }
+  // XỬ LÝ GỬI TIN NHẮN
+  async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      
+      const senderId = userSelect.value;
+      if (!senderId) { toast('Vui lòng chọn tên của bạn!', 'err'); return; }
+      
+      const senderName = personOf(senderId)?.ten || 'Ai đó';
       chatInput.value = '';
 
-      // Hiển thị trạng thái đang tải
-      const loadingMsg = document.createElement('div');
-      loadingMsg.className = 'ai-msg bot';
-      loadingMsg.textContent = 'Đang phân tích dữ liệu...';
-      chatBody.appendChild(loadingMsg);
-      chatBody.scrollTop = chatBody.scrollHeight;
+      // GỌI HÀM DỌN DẸP TRƯỚC KHI GỬI TIN MỚI
+      await cleanupOldMessages();
 
-      // Tóm tắt dữ liệu để gửi cho AI
+      // 1. Lưu tin nhắn của người dùng lên Firebase
+      const newMsg = { senderId, sender: senderName, text, time: new Date().toISOString() };
+      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(newMsg) }, { merge: true });
+
+      // 2. Kiểm tra xem có gọi AI không (Gõ @AI hoặc @ai)
+      if (text.match(/@(ai|AI)\s+/)) {
+          const question = text.replace(/@(ai|AI)\s+/g, ''); 
+          await askAI(question);
+      }
+  }
+
+  // GỌI AI
+  async function askAI(question) {
+      // GỌI HÀM DỌN DẸP
+      await cleanupOldMessages();
+
+      // Tạo tin nhắn chờ
+      const loadingMsg = { senderId: 'ai', sender: 'AI Bot', text: 'Đang phân tích dữ liệu...', time: new Date().toISOString() };
+
+      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
+
       const contextData = {
-          tong_cong_viec: DB.assignments.length,
           nhan_su: DB.people.map(p => p.ten),
           cong_viec_qua_han: DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.deadline < D.today()).map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten, han: a.deadline })),
           cong_viec_dang_lam: DB.assignments.filter(a => a.trangThai === 'Đang làm').map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten }))
       };
-
       const prompt = `Bạn là trợ lý quản lý dự án. Dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nHãy trả lời câu hỏi sau ngắn gọn, thân thiện bằng tiếng Việt:\nCâu hỏi: ${question}`;
 
       try {
-          // Gọi API của Groq (Hỗ trợ CORS, tốc độ phản hồi cực nhanh)
           const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
               method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${GROQ_API_KEY}` 
-              },
-              body: JSON.stringify({
-                  // Đã thay đổi sang mô hình mới được Groq khuyến nghị
-                  model: 'openai/gpt-oss-120b', 
-                  messages: [{ role: 'user', content: prompt }]
-              })
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+              body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'user', content: prompt }] })
           });
-          
           const data = await res.json();
+          if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq");
           
-          if (!res.ok) {
-              throw new Error(data.error?.message || "Lỗi không xác định từ Groq");
-          }
+          const aiReply = { senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
           
-          // Hiển thị câu trả lời của AI
-          loadingMsg.textContent = data.choices[0].message.content;
       } catch (e) {
-          console.error("Lỗi AI chi tiết:", e);
-          loadingMsg.textContent = "Lỗi AI: " + e.message; 
-          loadingMsg.style.color = '#dc2626'; 
+          const errorMsg = { senderId: 'ai', sender: 'AI Bot', text: "Lỗi AI: " + e.message, time: new Date().toISOString() };
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errorMsg) }, { merge: true });
       }
-      chatBody.scrollTop = chatBody.scrollHeight;
   }
 
-  if(chatSend) chatSend.addEventListener('click', () => { if (chatInput.value.trim()) askAI(chatInput.value.trim()); });
-  if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && chatInput.value.trim()) askAI(chatInput.value.trim()); });
+  if(chatSend) chatSend.addEventListener('click', sendMessage);
+  if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
   async function checkPassword() {
       const enteredPass = loginPassword.value;
