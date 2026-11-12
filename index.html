@@ -2184,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* === TRỢ LÝ AI GEMINI === */
-  const GEMINI_API_KEY = "AIzaSyBrKsBDxmsHLW2LPKaYqy06lmCzl2RwoEc"; // <-- THAY KEY VÀO ĐÂY
+  const GEMINI_API_KEY = "AQ.Ab8RN6Ljbuk-zCYCV-1W5g5nStu8OVcbPGP-lQJ0wpDUVR5hJg"; // <-- THAY KEY VÀO ĐÂY
   
   const chatBtn = document.getElementById('ai-chat-btn');
   const chatWindow = document.getElementById('ai-chat-window');
@@ -2220,19 +2220,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const prompt = `Bạn là trợ lý quản lý dự án. Dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nHãy trả lời câu hỏi sau ngắn gọn, thân thiện bằng tiếng Việt:\nCâu hỏi: ${question}`;
 
       try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+          // Thay model sang bản 1.5-flash mới nhất và bắt lỗi chi tiết
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
           });
+          
           const data = await res.json();
+          
+          if (!res.ok) {
+              // Nếu Google báo lỗi, hiển thị chính xác lỗi đó ra màn hình
+              throw new Error(data.error?.message || "Lỗi không xác định từ Google");
+          }
+          
           loadingMsg.textContent = data.candidates[0].content.parts[0].text;
       } catch (e) {
-          loadingMsg.textContent = "Lỗi kết nối AI. Vui lòng kiểm tra API Key.";
+          console.error("Lỗi AI chi tiết:", e);
+          loadingMsg.textContent = "Lỗi AI: " + e.message; 
+          loadingMsg.style.color = '#dc2626'; // Đổi màu chữ sang đỏ để dễ nhìn
       }
       chatBody.scrollTop = chatBody.scrollHeight;
   }
-
   if(chatSend) chatSend.addEventListener('click', () => { if (chatInput.value.trim()) askGemini(chatInput.value.trim()); });
   if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && chatInput.value.trim()) askGemini(chatInput.value.trim()); });
   const loginBtn = document.getElementById('loginBtn');
