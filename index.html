@@ -345,6 +345,12 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
     </div>
     <div style="width: 100%; text-align: center; font-size: 11px; color: #e0f2fe; opacity: 0.8; margin-top: 4px;">
       (Tin nhắn tự động xóa sau 7 ngày)
+    <!-- THÊM ĐOẠN NÀY VÀO -->
+    <div style="width: 100%; display: flex; align-items: center; margin-top: 8px; font-size: 12px; padding: 0 4px;">
+      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff;">
+        <input type="checkbox" id="chat-select-all" style="width: 15px; height: 15px; accent-color: #fff;">
+        Chọn tất cả tin nhắn
+      </label>
     </div>
   </div>
   <div class="ai-body" id="ai-body">
@@ -2233,7 +2239,12 @@ document.addEventListener('DOMContentLoaded', () => {
                       let lateHtml = '', soonHtml = '';
                       msg.alertTasks.forEach(t => {
                           const btn = `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${t.id}" title="Click để hoàn thành">✓</button>`;
-                          const line = `<div style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;"> <span>- ${esc(t.ten)} <span style="font-size:11px;color:#64748b;">(Hạn: ${F.date(t.deadline)})</span></span> ${btn}</div>`;
+                          const timeInfo = t.type === 'late' ? `<span style="color:#dc2626;font-weight:bold;margin-left:6px;">(Trễ ${t.lateDays} ngày)</span>` : `<span style="color:#d97706;font-weight:bold;margin-left:6px;">(Còn 1 ngày)</span>`;
+                          
+                          const line = `<div style="margin-bottom:6px; display:flex; align-items:flex-start; justify-content:space-between; gap: 8px;"> 
+                              <span style="flex:1; line-height: 1.4;">- ${esc(t.ten)} <br><span style="font-size:11px;color:#64748b;">NV: <b>${esc(t.nguoi)}</b> - Hạn: ${F.date(t.deadline)}</span>${timeInfo}</span> 
+                              ${btn}
+                          </div>`;
                           if (t.type === 'late') lateHtml += line;
                           else soonHtml += line;
                       });
@@ -2294,8 +2305,42 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
               btnDel.classList.remove('show');
           }
+          // Cập nhật lại trạng thái nút "Chọn tất cả"
+          if (selectAllBtn) {
+              const checkboxes = document.querySelectorAll('.chat-checkbox');
+              const allChecked = Array.from(checkboxes).length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+              selectAllBtn.checked = allChecked;
+          }
       }
+
   });
+  // XỬ LÝ CHỌN TẤT CẢ
+  const selectAllBtn = document.getElementById('chat-select-all');
+  if (selectAllBtn) {
+      selectAllBtn.addEventListener('change', (e) => {
+          const isChecked = e.target.checked;
+          const checkboxes = document.querySelectorAll('.chat-checkbox');
+          
+          checkboxes.forEach(cb => {
+              cb.checked = isChecked;
+              const msgId = cb.dataset.id;
+              if (isChecked) {
+                  if (!UI.chatSelectedMsgs.includes(msgId)) UI.chatSelectedMsgs.push(msgId);
+              } else {
+                  UI.chatSelectedMsgs = [];
+              }
+          });
+
+          // Cập nhật nút xóa hàng loạt
+          const btnDel = document.getElementById('btn-delete-selected');
+          if (UI.chatSelectedMsgs.length > 0) {
+              btnDel.classList.add('show');
+              btnDel.textContent = `Xóa ${UI.chatSelectedMsgs.length} tin nhắn đã chọn`;
+          } else {
+              btnDel.classList.remove('show');
+          }
+      });
+  }
 
   chatBody.addEventListener('click', async (e) => {
       const completeBtn = e.target.closest('[data-act="completeTaskFromChat"]');
@@ -2306,7 +2351,9 @@ document.addEventListener('DOMContentLoaded', () => {
           task.trangThai = 'Hoàn thành';
           task.pct = 100;
           App.changed(false); 
-          const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
+
+          const personName = personOf(task.nguoiNhan)?.ten || 'ai đó';
+          const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" của ${personName} đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
           return;
       }
@@ -2371,8 +2418,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function askAI(question) {
       await cleanupOldMessages();
-      const loadingMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: 'Đang phân tích dữ liệu...', time: new Date().toISOString() };
-      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
 
       const contextData = {
           nhan_su: DB.people.map(p => p.ten),
@@ -2401,8 +2446,15 @@ document.addEventListener('DOMContentLoaded', () => {
           if (lateTasks.length > 0 || soonTasks.length > 0) {
               aiReply.isAlert = true;
               aiReply.alertTasks = [];
-              lateTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
-              soonTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
+              lateTasks.forEach(t => aiReply.alertTasks.push({ 
+                  id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', 
+                  nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', 
+                  lateDays: -D.diff(t.deadline, today) 
+              }));
+              soonTasks.forEach(t => aiReply.alertTasks.push({ 
+                  id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', 
+                  nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' 
+              }));
           }
 
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
@@ -2429,8 +2481,15 @@ document.addEventListener('DOMContentLoaded', () => {
           const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
 
           let alertTasks = [];
-          if (lateTasks.length > 0) lateTasks.forEach(t => alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
-          if (soonTasks.length > 0) soonTasks.forEach(t => alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
+          if (lateTasks.length > 0) lateTasks.forEach(t => alertTasks.push({ 
+              id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', 
+              nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', 
+              lateDays: -D.diff(t.deadline, today) 
+          }));
+          if (soonTasks.length > 0) soonTasks.forEach(t => alertTasks.push({ 
+              id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', 
+              nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' 
+          }));
 
           if (alertTasks.length > 0) {
               const alertMsg = { 
