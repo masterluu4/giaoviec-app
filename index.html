@@ -307,6 +307,11 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .selecting .chat-msg-checkbox { display: inline-block; }
 .selecting .chat-actions { display: none !important; }
 .chat-bubble-wrap.selected .ai-msg { background: #e0f2fe !important; border-color: #7dd3fc !important; }
+.btn-complete-task { display: inline-flex; align-items: center; justify-content: center; background: #22c55e; color: white; width: 20px; height: 20px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; vertical-align: middle; margin-left: 6px; padding: 0; }
+.btn-complete-task:hover { background: #16a34a; }
+.btn-complete-task:disabled { background: #cbd5e1; cursor: not-allowed; }
+#btn-delete-selected { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); display: none; background: #dc2626; color: #fff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(220,38,38,.4); z-index: 100; white-space: nowrap; }
+#btn-delete-selected.show { display: block; animation: pop .2s; }
 </style>
 
 <!-- FIREBASE SDK & CONFIG -->
@@ -2239,6 +2244,19 @@ document.addEventListener('DOMContentLoaded', () => {
   chatDocRef.onSnapshot((doc) => {
       if (doc.exists) {
           const messages = doc.data().messages || [];
+          
+          // Lọc lại danh sách ID đã chọn để xóa những ID không còn tồn tại
+          UI.chatSelectedMsgs = (UI.chatSelectedMsgs || []).filter(id => messages.some(m => (m.id || m.time) === id));
+          const delBtn = document.getElementById('btn-delete-selected');
+          if (delBtn) {
+              if (UI.chatSelectedMsgs.length > 0) {
+                  delBtn.classList.add('show');
+                  delBtn.textContent = `Xóa ${UI.chatSelectedMsgs.length} tin nhắn`;
+              } else {
+                  delBtn.classList.remove('show');
+              }
+          }
+
           if (messages.length !== lastChatCount) {
               chatBody.innerHTML = messages.map(msg => {
                   const isAI = msg.sender === 'AI Bot';
@@ -2248,10 +2266,22 @@ document.addEventListener('DOMContentLoaded', () => {
                   const msgId = msg.id || msg.time;
                   const editedTag = msg.isEdited ? ` <span style="font-size:10px;color:#94a3b8;font-style:italic;">(đã sửa)</span>` : '';
                   
-                  // Nếu là tin nhắn cảnh báo, hiển thị nút Hoàn thành
-                  let actionHtml = '';
-                  if (msg.isAlert && msg.taskIds) {
-                      actionHtml = `<div style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 8px;">${msg.taskIds.map(tid => `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${tid}">✅ Xong: ${esc(msg.taskNames[tid])}</button>`).join('<br>')}</div>`;
+                  let contentHtml = esc(msg.text || '').replace(/\n/g, '<br>');
+
+                  // XỬ LÝ ĐẶC BIỆT CHO TIN NHẮN CẢNH BÁO (Tạo nút tick inline)
+                  if (msg.isAlert && msg.alertTasks) {
+                      let lateHtml = '', soonHtml = '';
+                      msg.alertTasks.forEach(t => {
+                          // Nút tick nhỏ gọn
+                          const btn = `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${t.id}" title="Click để hoàn thành">✓</button>`;
+                          // Dòng hiển thị công việc + nút tick
+                          const line = `<div style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;"> <span>- ${esc(t.ten)} <span style="font-size:11px;color:#64748b;">(Hạn: ${F.date(t.deadline)})</span></span> ${btn}</div>`;
+                          if (t.type === 'late') lateHtml += line;
+                          else soonHtml += line;
+                      });
+                      contentHtml = `<b>🔔 Báo cáo nhắc việc 8h sáng:</b><br><br>`;
+                      if (lateHtml) contentHtml += `<span style="color:#dc2626;font-weight:bold;">🚨 CẢNH BÁO QUÁ HẠN:</span><br>${lateHtml}<br>`;
+                      if (soonHtml) contentHtml += `<span style="color:#d97706;font-weight:bold;">⏳ SẮP ĐẾN HẠN (Còn 1 ngày):</span><br>${soonHtml}`;
                   }
 
                   const isChecked = UI.chatSelectedMsgs.includes(msgId) ? 'checked' : '';
@@ -2261,8 +2291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       <div class="chat-bubble-wrap ${isMe ? 'me' : 'them'}" style="max-width: calc(100% - 24px); margin-bottom: 0;">
                           ${(!isMe && !isAI) ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 2px; font-weight: bold; padding-left:4px;">${esc(msg.sender)}</div>` : ''}
                           <div class="${bubbleClass}" style="${alignStyle}">
-                              ${esc(msg.text).replace(/\n/g, '<br>')}${editedTag}
-                              ${actionHtml}
+                              ${contentHtml}${editedTag}
                           </div>
                           <div class="chat-actions">
                               ${(isMe && !msg.isAlert) ? `<button class="chat-action-btn" data-act="editChat" data-id="${msgId}">✏️ Sửa</button>` : ''}
@@ -2277,31 +2306,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // XỬ LÝ TICK CHỌN NHIỀU TIN NHẮN
-  chatBody.addEventListener('change', (e) => {
-      if (e.target.classList.contains('chat-checkbox')) {
-          const msgId = e.target.dataset.id;
-          if (e.target.checked) {
-              if (!UI.chatSelectedMsgs.includes(msgId)) UI.chatSelectedMsgs.push(msgId);
-          } else {
-              UI.chatSelectedMsgs = UI.chatSelectedMsgs.filter(id => id !== msgId);
-          }
-          // Hiện/Ẩn nút xóa hàng loạt
-          const btnDel = document.getElementById('btn-delete-selected');
-          if (UI.chatSelectedMsgs.length > 0) {
-              btnDel.classList.add('show');
-              btnDel.textContent = `Xóa ${UI.chatSelectedMsgs.length} tin nhắn đã chọn`;
-          } else {
-              btnDel.classList.remove('show');
-          }
-      }
-  });
-
   // LẮNG NGHE SỰ KIỆN SỬA/XÓA
   // Tạo nút xóa hàng loạt động
+  // Tạo nút xóa hàng loạt động (Trôi nổi)
   const delBtn = document.createElement('button');
   delBtn.id = 'btn-delete-selected';
-  chatBody.parentNode.insertBefore(delBtn, chatBody.nextSibling); // Chèn ngay dưới khung chat
+  document.getElementById('ai-chat-window').appendChild(delBtn);
 
   delBtn.addEventListener('click', async () => {
       if (!confirm(`Bạn có chắc muốn xóa ${UI.chatSelectedMsgs.length} tin nhắn này?`)) return;
@@ -2388,12 +2398,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // === TỰ ĐỘNG CẢNH BÁO LÚC 8H SÁNG HẰNG NGÀY ===
   async function checkDailyAlerts() {
-      // Lấy thời gian hiện tại theo múi giờ Việt Nam (UTC+7)
       const now = new Date();
       const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
       const todayStr = vnTime.toISOString().slice(0, 10);
       
-      // Chỉ chạy nếu đã qua 8h sáng và chưa chạy trong hôm nay
       if (vnTime.getHours() >= 8 && localStorage.getItem('lastAlertDate') !== todayStr) {
           const today = todayStr;
           const tomorrow = D.add(today, 1);
@@ -2401,43 +2409,23 @@ document.addEventListener('DOMContentLoaded', () => {
           const lateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
           const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
 
-          if (lateTasks.length > 0 || soonTasks.length > 0) {
-              let alertText = "🔔 **Báo cáo nhắc việc 8h sáng:**\n\n";
-              let taskIds = [];
-              let taskNames = {};
+          let alertTasks = [];
+          if (lateTasks.length > 0) lateTasks.forEach(t => alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
+          if (soonTasks.length > 0) soonTasks.forEach(t => alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
 
-              if (lateTasks.length > 0) {
-                  alertText += `🚨 **CẢNH BÁO ĐỎ - QUÁ HẠN (${lateTasks.length} việc):**\n`;
-                  lateTasks.forEach(t => {
-                      alertText += `- ${t.ten} (Hạn: ${F.date(t.deadline)})\n`;
-                      taskIds.push(t.id);
-                      taskNames[t.id] = t.ten.slice(0,20) + '...';
-                  });
-                  alertText += "\n";
-              }
-
-              if (soonTasks.length > 0) {
-                  alertText += `⏳ **SẮP ĐẾN HẠN (Còn 1 ngày - ${soonTasks.length} việc):**\n`;
-                  soonTasks.forEach(t => {
-                      alertText += `- ${t.ten} (Hạn: ${F.date(t.deadline)})\n`;
-                      taskIds.push(t.id);
-                      taskNames[t.id] = t.ten.slice(0,20) + '...';
-                  });
-              }
-
+          if (alertTasks.length > 0) {
               const alertMsg = { 
                   id: uid(), 
                   senderId: 'ai', 
                   sender: 'AI Bot', 
-                  text: alertText, 
+                  text: '', // Không dùng text nữa mà dùng alertTasks
                   time: new Date().toISOString(), 
                   isAlert: true, 
-                  taskIds: taskIds,
-                  taskNames: taskNames
+                  alertTasks: alertTasks
               };
               
               await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(alertMsg) }, { merge: true });
-              localStorage.setItem('lastAlertDate', todayStr); // Đánh dấu đã chạy hôm nay
+              localStorage.setItem('lastAlertDate', todayStr);
           }
       }
   }
