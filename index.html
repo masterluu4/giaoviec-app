@@ -157,7 +157,6 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
   .search input{width:200px}.form,.form.c3,.form.c4{grid-template-columns:minmax(0,1fr)}.field.s2{grid-column:auto}
   .tabs{overflow-x:auto}
 }
-/* === NEW STYLES === */
 .insight b{color:#b45309}
 .insight { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .insight svg { width: 18px; height: 18px; flex: none; vertical-align: middle; margin-right: 6px; }
@@ -242,7 +241,6 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .attach-item .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-item .sz{font-size:11px;color:#98a2b3}
 .cw{display:flex;flex-direction:column;gap:12px}
-/* Gantt Chia Cột (Phong cách Excel) */
 .gantt-wrapper { background: #fff; border-radius: 12px; border: 1px solid #e6e9f0; box-shadow: 0 1px 3px rgba(16,24,40,.04); display: flex; flex-direction: column; overflow: hidden; }
 .gantt-wrapper:fullscreen { border-radius: 0; border: 0; padding: 10px; background: #fff; width: 100vw; height: 100vh; }
 .gt-split{display:flex;background:#fff;border:1px solid #cbd5e1;overflow:auto;position:relative;align-items:flex-start;max-height:calc(100vh - 220px);flex: 1;}
@@ -250,46 +248,45 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .gt-left{flex-shrink:0;width:720px;background:#fff;border-right:2px solid #94a3b8;z-index:5;position:sticky;left:0}
 .gt-right{flex-shrink:0;position:relative}
 .gt-right-sticky{flex-shrink:0;width:160px;background:#fff;border-left:2px solid #94a3b8;box-shadow:-4px 0 10px -6px rgba(16,24,40,.18);z-index:5;position:sticky;right:0}
-
-/* Bảng bên trái */
 .gt-table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 0; }
 .gt-table th, .gt-table td { border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 13px; box-sizing: border-box; }
 .gt-table th { background: #1e3a8a; color: #fff; font-weight: 700; text-align: center; text-transform: uppercase; font-size: 12px; line-height: 1.2; vertical-align: middle; }
 .gt-table .col-tt { width: 50px; text-align: center; }
 .gt-table .col-ten { width: 570px; text-align: left; line-height: 1.35; white-space: normal; }
-.gt-table th.col-ten { text-align: center; } /* Căn giữa chữ HẠNG MỤC */
+.gt-table th.col-ten { text-align: center; }
 .gt-table .col-nguoi { width: 100px; text-align: center; white-space: nowrap; }
-
-/* Dòng tiêu đề chuyên đề */
 .gt-title-row td { background: #1e3a8a; color: #facc15; font-size: 15px; font-weight: bold; padding: 0 12px; text-align: left; }
-
-/* Style cho text đặc biệt */
 .txt-red { color: #dc2626; font-weight: 700; }
 .gt-row-parent { background: #f1f5f9; font-weight: bold; }
 .gt-row-important td { background: #fff1f2; } 
 .gt-row-summary td { background: #e2e8f0; font-weight: bold; color: #1e3a8a; border-bottom: 2px solid #94a3b8; letter-spacing: 0.5px;}
-
-/* Bảng bên phải (Kết quả) */
 .gt-table-right { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 0; }
 .gt-table-right th { background: #1e3a8a; color: #fff; font-weight: 700; text-align: center; padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; text-transform: uppercase; line-height: 1.2; vertical-align: middle; }
 .gt-table-right td { border: 1px solid #cbd5e1; padding: 4px; font-size: 11.5px; vertical-align: middle; box-sizing: border-box; text-align: center; word-break: break-word; line-height: 1.35; }
 .gt-res-green { background: #dcfce7; color: #166534; font-weight: 600; display: inline-block; padding: 3px 6px; border-radius: 4px; max-width: 98%; word-break: break-word; white-space: normal; vertical-align: middle; }
 .gt-res-red { background: #fee2e2; color: #991b1b; font-weight: 600; display: inline-block; padding: 3px 6px; border-radius: 4px; max-width: 98%; word-break: break-word; white-space: normal; vertical-align: middle; }
 .gt-res-yellow { background: #fef9c3; color: #854d0e; font-weight: 600; display: inline-block; padding: 3px 6px; border-radius: 4px; max-width: 98%; word-break: break-word; white-space: normal; vertical-align: middle; }
-/* === CSS CHO TRỢ LÝ AI === */
+
+/* CSS CHO TEAM CHAT */
 #ai-chat-btn { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--p); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(13,148,136,.4); z-index: 1000; transition: transform .2s; }
 #ai-chat-btn:hover { transform: scale(1.1); }
 #ai-chat-btn svg { width: 28px; height: 28px; }
 #ai-chat-window { position: fixed; bottom: 90px; right: 24px; width: 360px; height: 500px; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.15); display: none; flex-direction: column; z-index: 1000; border: 1px solid #e6e9f0; overflow: hidden; }
 #ai-chat-window.show { display: flex; animation: pop .2s; }
-.ai-head { background: var(--p); color: #fff; padding: 12px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.ai-head { background: var(--p); color: #fff; padding: 12px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .ai-head button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 18px; }
-.ai-body { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; }
+.ai-body { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; position: relative; }
 .ai-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; white-space: normal; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.05); margin-bottom: 6px; }
 .ai-msg.user { background: #ccfbf1; color: #042f2e; align-self: flex-end; border-bottom-right-radius: 2px; }
 .ai-msg.bot { background: #fff; color: #1f2937; align-self: flex-start; border: 1px solid #e6e9f0; border-bottom-left-radius: 2px; }
-/* CSS CHO NÚT SỬA/XÓA TIN NHẮN */
-.chat-bubble-wrap { position: relative; display: flex; flex-direction: column; max-width: 85%; margin-bottom: 6px; }
+.ai-foot { padding: 12px; background: #fff; border-top: 1px solid #e6e9f0; display: flex; gap: 8px; }
+.ai-foot input { flex: 1; border: 1px solid #d6dce7; border-radius: 8px; padding: 8px 12px; outline: none; }
+.ai-foot button { background: var(--p); color: #fff; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; font-weight: 600; }
+.chat-msg-row { display: flex; align-items: flex-start; gap: 8px; width: 100%; margin-bottom: 6px; }
+.chat-msg-row.me { flex-direction: row-reverse; }
+.chat-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--p); flex: none; display: none; margin-top: 4px; }
+.chat-msg-row:hover .chat-checkbox, .chat-checkbox:checked { display: block; }
+.chat-bubble-wrap { position: relative; display: flex; flex-direction: column; max-width: 85%; }
 .chat-bubble-wrap.me { align-self: flex-end; align-items: flex-end; }
 .chat-bubble-wrap.them { align-self: flex-start; align-items: flex-start; }
 .chat-actions { display: none; gap: 8px; margin-top: 2px; font-size: 11px; padding: 0 4px; }
@@ -297,16 +294,6 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .chat-action-btn { background: transparent; border: none; cursor: pointer; color: #64748b; padding: 0; display: flex; align-items: center; gap: 4px; }
 .chat-action-btn:hover { color: var(--p); }
 .chat-action-btn.del:hover { color: #dc2626; }
-.ai-foot { padding: 12px; background: #fff; border-top: 1px solid #e6e9f0; display: flex; gap: 8px; }
-.ai-foot input { flex: 1; border: 1px solid #d6dce7; border-radius: 8px; padding: 8px 12px; outline: none; }
-.ai-foot button { background: var(--p); color: #fff; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; font-weight: 600; }
-/* CSS CHO TÍNH NĂNG CHỌN NHIỀU TIN NHẮN */
-#chat-multi-bar { display: none; background: #fef2f2; padding: 8px 12px; border-bottom: 1px solid #fecaca; justify-content: space-between; align-items: center; font-size: 12.5px; }
-#chat-multi-bar.show { display: flex; }
-.chat-msg-checkbox { display: none; margin-right: 8px; cursor: pointer; accent-color: var(--p); }
-.selecting .chat-msg-checkbox { display: inline-block; }
-.selecting .chat-actions { display: none !important; }
-.chat-bubble-wrap.selected .ai-msg { background: #e0f2fe !important; border-color: #7dd3fc !important; }
 .btn-complete-task { display: inline-flex; align-items: center; justify-content: center; background: #22c55e; color: white; width: 20px; height: 20px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; vertical-align: middle; margin-left: 6px; padding: 0; }
 .btn-complete-task:hover { background: #16a34a; }
 .btn-complete-task:disabled { background: #cbd5e1; cursor: not-allowed; }
@@ -332,19 +319,30 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 </head>
 <body>
 <div id="app"></div>
+
+<!-- MÀN HÌNH ĐĂNG NHẬP -->
+<div id="loginScreen" style="position:fixed; inset:0; background:#f3f5f9; z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div style="background:#fff; padding:40px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:90%;">
+        <h2 style="margin-top:0; color:#042f2e;">🔐 Yêu cầu truy cập</h2>
+        <p style="color:#667085; margin-bottom:24px;">Vui lòng nhập mật khẩu để sử dụng ứng dụng.</p>
+        <input type="password" id="loginPassword" class="inp" placeholder="Nhập mật khẩu..." style="width:100%; text-align:center; margin-bottom:16px; height:40px;">
+        <button id="loginBtn" class="btn pri" style="width:100%; height:40px; justify-content:center;">Đăng nhập</button>
+        <p id="loginError" style="color:#dc2626; margin-top:12px; font-size:13px; display:none;">Mật khẩu không đúng. Vui lòng thử lại.</p>
+    </div>
+</div>
+
 <!-- NÚT VÀ KHUNG CHAT NỘI BỘ -->
 <div id="ai-chat-btn" title="Kênh trao đổi">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 </div>
 <div id="ai-chat-window">
-  <div class="ai-head" style="flex-wrap: wrap; gap: 8px;">
+  <div class="ai-head">
     <span>💬 Kênh trao đổi đội nhóm</span>
     <button id="ai-close" style="margin-left:auto;">×</button>
     <div style="width: 100%; display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 4px;">
       <span>Bạn là:</span>
       <select id="chat-user-select" style="flex: 1; padding: 4px; border-radius: 4px; border: none; color: #1f2937;"></select>
     </div>
-    <!-- THÊM DÒNG NÀY ĐỂ THÔNG BÁO -->
     <div style="width: 100%; text-align: center; font-size: 11px; color: #e0f2fe; opacity: 0.8; margin-top: 4px;">
       (Tin nhắn tự động xóa sau 7 ngày)
     </div>
@@ -356,16 +354,6 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
     <input type="text" id="ai-input" placeholder="Nhập tin nhắn... (Gõ @AI để hỏi trợ lý)">
     <button id="ai-send">Gửi</button>
   </div>
-</div>
-<!-- MÀN HÌNH ĐĂNG NHẬP -->
-<div id="loginScreen" style="position:fixed; inset:0; background:#f3f5f9; z-index:9999; display:flex; align-items:center; justify-content:center;">
-    <div style="background:#fff; padding:40px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:90%;">
-        <h2 style="margin-top:0; color:#042f2e;">🔐 Yêu cầu truy cập</h2>
-        <p style="color:#667085; margin-bottom:24px;">Vui lòng nhập mật khẩu để sử dụng ứng dụng.</p>
-        <input type="password" id="loginPassword" class="inp" placeholder="Nhập mật khẩu..." style="width:100%; text-align:center; margin-bottom:16px; height:40px;">
-        <button id="loginBtn" class="btn pri" style="width:100%; height:40px; justify-content:center;">Đăng nhập</button>
-        <p id="loginError" style="color:#dc2626; margin-top:12px; font-size:13px; display:none;">Mật khẩu không đúng. Vui lòng thử lại.</p>
-    </div>
 </div>
 
 <script id="app-data" type="application/json">{"settings":{"company":{"ten":"Công ty TNHH Bán lẻ An Phát","diaChi":"88 Nguyễn Trãi, Thanh Xuân, Hà Nội","sdt":"0912 345 678","email":"contact@anphat.vn","mst":"","website":"anphat.vn","logo":""},"calMode":"cal","warnDays":7},"people":[{"id":"u1","ten":"Võ Thành Lưu","vaiTro":"TP QLCL SBH KCN"},{"id":"u2","ten":"Châu Ngọc Huy","vaiTro":"TBP QLCL xe Tải & SMRM"},{"id":"u3","ten":"Nguyễn Đình Đức","vaiTro":"TBP QLCL Bus"},{"id":"u4","ten":"Lê Công Viên","vaiTro":"CV QLCL SBH Bus"},{"id":"u5","ten":"Nguyễn Tấn Thịnh","vaiTro":"CV QLCL Tải & SMRM"},{"id":"u6","ten":"Nguyễn Đình Nam","vaiTro":"CV Audit xe thành phẩm Tải Bus"},{"id":"mvrel372ln8fr","ten":"Mr Cẩn","vaiTro":"TT R&D"},{"id":"mvrelamsq1bge","ten":"Mr Trung","vaiTro":"QLCL Tải"},{"id":"mvrelj18g399t","ten":"Mr Sinh","vaiTro":"QLCL Bus"},{"id":"mvrqe2yf08888","ten":"Mr Thích","vaiTro":"DV SBH"}],"topics":[{"id":"mvregad61wz3h","ma":"CĐ.2026.03","trangThai":"Đang thực hiện","ten":"GIẢI QUYẾT LỖI RUNG ĐỘNG CABIN XE TẢI TOWNER","moTa":"Khách hàng phản hồi xe chạy rung rần cabin vận tốc 40-50km/h","mucTieuDL":"Xác định nguyên nhân và có giải pháp xử lý cho xe khách hàng, xe đã giao và xe sản xuất tại NM","mucTieuDLT":"","kpiTen":"","kpiDonVi":"","kpiTruoc":"","kpiSau":"","donVi":"P.QLCL KCN","nguoiChuTri":"u1","thanhVien":["mvrelamsq1bge"],"ngayBD":"2026-10-23","ngayKTDK":"2026-10-29","ngayKT":"","ghiChu":"","minhChung":[],"endMilestoneText":"Kết thúc CĐ"}],"topicTasks":[{"id":"mvreo8nl8ibd4","topicId":"mvregad61wz3h","log":[["2026-10-28",100]],"ten":"Điều xe từ CN Khánh Hòa về NM, chuẩn bị phụ tùng xử lý và kiểm tra thông số xe tại NM.","parentId":"","nguoi":"","start":"2026-10-23","buoi":"Chiều","days":1,"dep":"","pct":100,"ketQua":"Đạt","showOnTimeline":true,"milestoneText":"Điều xe về NM","isHighlight":false},{"id":"mvrep5aa80lhf","topicId":"mvregad61wz3h","log":[["2026-10-28",100]],"ten":"Điều xe từ Khánh hòa về NM Tải","parentId":"mvreo8nl8ibd4","nguoi":"","start":"2026-10-23","buoi":"Chiều","days":1,"dep":"","pct":100,"ketQua":"Hoàn thành","showOnTimeline":false,"isHighlight":false,"milestoneText":""},{"id":"mvrepyxqou1my","topicId":"mvregad61wz3h","log":[["2026-10-28",100]],"ten":"Chuẩn bị phụ tùng mới (Mâm lốp cân bằng động, cầu trước và sau, thước lái, nhíp, giảm chấn","parentId":"mvreo8nl8ibd4","nguoi":"mvrelamsq1bge","start":"2026-10-23","buoi":"Chiều","days":0.5,"dep":"","pct":100,"ketQua":"Hoàn thành","showOnTimeline":false,"isHighlight":false,"milestoneText":""},{"id":"mvretuq6nafkg","topicId":"mvregad61wz3h","log":[["2026-10-28",100]],"ten":"Tiếp nhận, bàn giao, kiểm tra ngoại quan xe khách","parentId":"","nguoi":"mvrelamsq1bge","start":"2026-10-24","buoi":"Sáng","days":0.5,"dep":"","pct":100,"ketQua":"Hoàn thành","showOnTimeline":true,"milestoneText":"Tiếp nhận xe","isHighlight":false},{"id":"mvreurg4fih72","topicId":"mvregad61wz3h","log":[["2026-10-28",100]],"ten":"Vận hành chạy đường thử ở chế độ không Tải và đo dữ liệu ban đầu","parentId":"","nguoi":"mvrel372ln8fr","start":"2026-10-23","buoi":"Chiều","days":0.5,"dep":"","pct":100,"ketQua":"Hoàn thành","showOnTimeline":true,"milestoneText":"Chạy thử","isHighlight":false},{"id":"mvrrwr19iv4b3","topicId":"mvregad61wz3h","log":[],"ten":"tét","parentId":"mvreurg4fih72","nguoi":"","start":"2026-10-28","buoi":"Sáng","days":1,"dep":"","pct":0,"ketQua":"","showOnTimeline":false,"milestoneText":"","isHighlight":false}],"assignments":[{"id":"gv1","ma":"GV.001","ten":"Chuẩn bị báo cáo quý IV","moTa":"Tổng hợp số liệu và đánh giá KQKD quý IV","nguoiGiao":"u1","nguoiNhan":"u2","nguoiPhoiHop":["u4"],"start":"2026-10-24","deadline":"2026-10-31","uuTien":"Cao","trangThai":"Đang làm","pct":40,"lyDoTre":"","dep":"","checklist":[{"id":"k1","ten":"Thu thập số liệu phòng ban","done":true},{"id":"k2","ten":"Tổng hợp báo cáo","done":false},{"id":"k3","ten":"Rà soát số liệu","done":false}],"comments":[{"id":"c1","by":"u1","at":"2026-10-24T09:00","text":"Nhớ đưa số liệu so sánh với quý III nhé"},{"id":"c2","by":"u2","at":"2026-10-26T14:30","text":"Dạ em đã thu thập xong, đang tổng hợp"}],"dinhKem":[],"log":[["2026-10-24",10],["2026-10-26",40]]},{"id":"gv2","ma":"GV.002","ten":"Kiểm kê kho tháng 11","moTa":"Kiểm kê toàn bộ kho A và B","nguoiGiao":"u1","nguoiNhan":"u6","nguoiPhoiHop":["u4","u2"],"start":"2026-11-01","deadline":"2026-11-06","uuTien":"Cao","trangThai":"Mới giao","pct":0,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[]},{"id":"gv3","ma":"GV.003","ten":"Cập nhật quy trình ISO 9001","moTa":"Rà soát và cập nhật quy trình theo phiên bản 2026","nguoiGiao":"u1","nguoiNhan":"u2","nguoiPhoiHop":[],"start":"2026-10-17","deadline":"2026-10-25","uuTien":"Trung bình","trangThai":"Chờ duyệt","pct":100,"lyDoTre":"","dep":"","checklist":[],"comments":[{"id":"c3","by":"u2","at":"2026-10-25T16:00","text":"Đã hoàn thành, gửi anh duyệt"}],"dinhKem":[],"log":[["2026-10-17",30],["2026-10-22",70],["2026-10-25",100]]},{"id":"gv4","ma":"GV.004","ten":"Đào tạo nhân viên mới","moTa":"Onboard 3 nhân viên mới phòng vận hành","nguoiGiao":"u1","nguoiNhan":"u4","nguoiPhoiHop":[],"start":"2026-10-12","deadline":"2026-10-22","uuTien":"Trung bình","trangThai":"Hoàn thành","pct":100,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[["2026-10-12",30],["2026-10-17",70],["2026-10-22",100]]},{"id":"gv5","ma":"GV.005","ten":"Mua sắm thiết bị văn phòng","moTa":"Mua sắm máy in, máy scan cho phòng HC-NS","nguoiGiao":"u1","nguoiNhan":"u6","nguoiPhoiHop":[],"start":"2026-10-25","deadline":"2026-11-03","uuTien":"Thấp","trangThai":"Đang làm","pct":25,"lyDoTre":"","dep":"","checklist":[{"id":"k4","ten":"Lấy báo giá 3 nhà cung cấp","done":true},{"id":"k5","ten":"Chọn nhà cung cấp","done":false},{"id":"k6","ten":"Đặt hàng và nhận","done":false}],"comments":[],"dinhKem":[],"log":[["2026-10-25",25]]},{"id":"gv6","ma":"GV.006","ten":"Xử lý khiếu nại khách hàng A","moTa":"Khách hàng phản ánh đơn hàng giao trễ 3 ngày","nguoiGiao":"u1","nguoiNhan":"u4","nguoiPhoiHop":[],"start":"2026-10-23","deadline":"2026-10-26","uuTien":"Cao","trangThai":"Đang làm","pct":60,"lyDoTre":"Chờ phản hồi từ đơn vị vận chuyển","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[["2026-10-23",30],["2026-10-26",60]]},{"id":"gv7","ma":"GV.007","ten":"Lên kế hoạch marketing tháng 12","moTa":"Kế hoạch khuyến mãi T12 và Tết","nguoiGiao":"u1","nguoiNhan":"u3","nguoiPhoiHop":[],"start":"2026-10-27","deadline":"2026-11-04","uuTien":"Trung bình","trangThai":"Mới giao","pct":0,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[]},{"id":"gv8","ma":"GV.008","ten":"Kiểm tra an toàn PCCC","moTa":"Kiểm tra định kỳ hệ thống PCCC toàn công ty","nguoiGiao":"u1","nguoiNhan":"u4","nguoiPhoiHop":["u5"],"start":"2026-10-07","deadline":"2026-10-24","uuTien":"Cao","trangThai":"Hoàn thành","pct":100,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[["2026-10-07",50],["2026-10-24",100]]},{"id":"gv9","ma":"GV.009","ten":"Đánh giá nhà cung cấp quý IV","moTa":"Đánh giá 10 nhà cung cấp chính","nguoiGiao":"u1","nguoiNhan":"u6","nguoiPhoiHop":[],"start":"2026-10-26","deadline":"2026-11-02","uuTien":"Trung bình","trangThai":"Đã nhận","pct":5,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[]},{"id":"gv10","ma":"GV.010","ten":"Họp giao ban tháng 11","moTa":"Họp toàn công ty","nguoiGiao":"u1","nguoiNhan":"u2","nguoiPhoiHop":[],"start":"2026-09-27","deadline":"2026-09-28","uuTien":"Thấp","trangThai":"Hoàn thành","pct":100,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[["2026-09-27",100]]},{"id":"gv11","ma":"GV.011","ten":"Rà soát hợp đồng lao động 2027","moTa":"Chuẩn bị gia hạn HĐLĐ cho nhân viên","nguoiGiao":"u1","nguoiNhan":"u2","nguoiPhoiHop":[],"start":"2026-10-25","deadline":"2026-10-21","uuTien":"Trung bình","trangThai":"Đang làm","pct":20,"lyDoTre":"Chờ Ban Giám đốc phê duyệt mức lương mới","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[]},{"id":"gv12","ma":"GV.012","ten":"Tổ chức tiệc cuối năm","moTa":"Lên kế hoạch tiệc tất niên công ty","nguoiGiao":"u1","nguoiNhan":"u3","nguoiPhoiHop":["u2"],"start":"2026-11-01","deadline":"2026-11-16","uuTien":"Cao","trangThai":"Mới giao","pct":0,"lyDoTre":"","dep":"","checklist":[],"comments":[],"dinhKem":[],"log":[]}],"_meta":{"savedAt":"2026-10-28T07:09:15.902Z"}}</script>
@@ -714,7 +702,6 @@ const Store = {
              cloudData.assignments.forEach(a => { if(a.log) a.log = a.log.map(l => Array.isArray(l) ? l : [l.d || l.date || '', l.v || l.value || 0]); });
           }
 
-          // BẮN THÔNG BÁO DESKTOP KHI CÓ VIỆC MỚI
           if (DB && DB.assignments && cloudData.assignments && cloudData.assignments.length > DB.assignments.length) {
               if ("Notification" in window && Notification.permission === "granted") {
                   const newTask = cloudData.assignments[cloudData.assignments.length - 1];
@@ -730,7 +717,7 @@ const Store = {
             App.cfg.migrate && App.cfg.migrate(DB);
             if (window.appInitialized) {
                 App.render(); 
-                checkOverdueAlerts(); // Gọi hàm kiểm tra cảnh báo
+                checkOverdueAlerts(); 
             }
           }
         }
@@ -742,80 +729,22 @@ const Store = {
   changed() { 
     const el = $('#saveState'); 
     if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
-    
-    // Lọc bỏ các giá trị undefined và chuyển mảng log thành object {date, value} để tránh lỗi Firebase
     const cleanDB = JSON.parse(JSON.stringify(DB)); 
-    
     if (cleanDB.topicTasks) {
-      cleanDB.topicTasks.forEach(t => { 
-        if(t.log) t.log = t.log.map(l => ({ date: l[0], value: l[1] })); 
-      });
+      cleanDB.topicTasks.forEach(t => { if(t.log) t.log = t.log.map(l => ({ date: l[0], value: l[1] })); });
     }
     if (cleanDB.assignments) {
-      cleanDB.assignments.forEach(a => { 
-        if(a.log) a.log = a.log.map(l => ({ date: l[0], value: l[1] })); 
-      });
+      cleanDB.assignments.forEach(a => { if(a.log) a.log = a.log.map(l => ({ date: l[0], value: l[1] })); });
     }
-    
     const docRef = db.collection('workspaces').doc('team_data');
-    docRef.set({ 
-      payload: cleanDB, 
-      updatedAt: new Date().toISOString() 
-    }).then(() => {
-      if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud';
-    }).catch(e => {
-      console.error("Lỗi lưu Firebase:", e);
-      if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!';
-      toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err');
-    });
+    docRef.set({ payload: cleanDB, updatedAt: new Date().toISOString() })
+    .then(() => { if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud'; })
+    .catch(e => { console.error("Lỗi lưu Firebase:", e); if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!'; toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err'); });
   },
-  status() {}, 
-  saved() {},
-  serialize() { return ''; },
-  guide: async () => true,
-  save: async () => {},
-  draft: () => null
+  status() {}, saved() {}, serialize() { return ''; }, guide: async () => true, save: async () => {}, draft: () => null
 };
 window.addEventListener('beforeunload', e => { });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); } });
-/* === TÍNH NĂNG CẢNH BÁO QUÁ HẠN === */
-let blinkInterval = null;
-const normalTitle = document.title;
-
-function playBeep() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = 800;
-        gain.gain.setValueAtTime(0.5, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    } catch(e) {}
-}
-
-function checkOverdueAlerts() {
-    if (!DB || !DB.assignments) return;
-    const today = D.today();
-    const hasLate = DB.assignments.some(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
-    
-    if (hasLate && !blinkInterval) {
-        playBeep();
-        let isRed = false;
-        blinkInterval = setInterval(() => {
-            document.title = isRed ? "⚠️ CẢNH BÁO: CÓ VIỆC TRỄ HẠN" : normalTitle;
-            isRed = !isRed;
-        }, 1000);
-    } else if (!hasLate && blinkInterval) {
-        clearInterval(blinkInterval);
-        blinkInterval = null;
-        document.title = normalTitle;
-    }
-}
 const App = {
   cfg: null, views: {}, cur: null, subtitle: '',
   init(cfg) {
@@ -824,10 +753,9 @@ const App = {
     Store.load();
     App.views.data = App.views.data || DataScreen;
     const navHTML = cfg.nav.map(g => `<div class="nav-group">${g.group}</div>${g.items.map(id => { const v = App.views[id]; if (!v) return ''; const cnt = v.count ? v.count() : ''; return `<a data-nav="${id}">${ic(v.icon)}<span>${v.label || v.title}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</a>`; }).join('')}`).join('') + `<div class="nav-group">Hệ thống</div><a data-nav="data">${ic('database')}<span>Dữ liệu & sao lưu</span></a>`;
-    $('#app').innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand"><div class="logo">${ic(cfg.icon)}</div><div><b>${cfg.title}</b><small>${cfg.tagline}</small></div></div><div class="side-top"><div class="save-state" id="saveState"><i></i><span></span></div><button class="btn-save" style="background:#10b981; color:#fff; cursor:default" data-act="saveFile">${ic('check')} Cloud Sync Bật</button></div><nav class="nav">${navHTML}</nav><div class="side-foot"><div class="credit">v1.0 · Mr.lưu </div></div></aside><div class="backdrop" data-act="navClose"></div><main class="main"><header class="topbar"><button class="ibtn menu-btn" data-act="navOpen">${ic('menu')}</button><div><h1 id="vTitle"></h1><p id="vDesc"></p></div><div class="top-actions" id="vTools"></div></header><section class="content"><div id="draftBox"></div><div id="view"></div></section></main></div>`;
+    $('#app').innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand"><div class="logo">${ic(cfg.icon)}</div><div><b>${cfg.title}</b><small>${cfg.tagline}</small></div></div><div class="side-top"><div class="save-state" id="saveState"><i></i><span></span></div><button class="btn-save" style="background:#10b981; color:#fff; cursor:default" data-act="saveFile">${ic('check')} Cloud Sync Bật</button></div><nav class="nav">${navHTML}</nav><div class="side-foot"><div class="credit">v1.0 · Giai đoạn 1 (offline)</div></div></aside><div class="backdrop" data-act="navClose"></div><main class="main"><header class="topbar"><button class="ibtn menu-btn" data-act="navOpen">${ic('menu')}</button><div><h1 id="vTitle"></h1><p id="vDesc"></p></div><div class="top-actions" id="vTools"></div></header><section class="content"><div id="draftBox"></div><div id="view"></div></section></main></div>`;
     $('#app').addEventListener('click', e => { const a = e.target.closest('[data-nav]'); if (a) { e.preventDefault(); App.go(a.dataset.nav); document.body.classList.remove('nav-open'); } });
     Store.status();
-    
     window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (h && h !== App.cur && App.views[h]) App.go(h); });
     const start = (location.hash || '').slice(1);
     App.go(App.views[start] ? start : cfg.home || 'dashboard');
@@ -845,11 +773,7 @@ const App = {
     const c = $$('.nav a').find(a => a.dataset.nav === App.cur); if (c && v.count) { const cn = c.querySelector('.cnt'); if (cn) cn.textContent = v.count(); }
   },
   changed(rerender = true) { 
-    try {
-      Store.changed(); 
-    } catch (e) {
-      console.error("Lỗi đồng bộ:", e);
-    }
+    try { Store.changed(); } catch (e) { console.error("Lỗi đồng bộ:", e); }
     if (rerender) App.render(); 
   }
 };
@@ -1620,9 +1544,7 @@ Object.assign(ACT, {
   evDel: d => { const t = topicOf(UI.topicId); if (t) { t.minhChung.splice(+d.i, 1); App.changed(); } }
 });
 document.addEventListener('fullscreenchange', () => {
-  if (App.cur === 'topics' && UI.sub === 'gantt') {
-    App.render();
-  }
+  if (App.cur === 'topics' && UI.sub === 'gantt') App.render();
 });
 
 /* ============================================
@@ -2203,10 +2125,52 @@ const vSet = {
 };
 
 /* ============================================
-   KHỞI TẠO APP (ĐÃ TÍCH HỢP ĐĂNG NHẬP)
+   HỆ THỐNG CHAT NỘI BỘ & AI BOT
    ============================================ */
+let blinkInterval = null;
+const normalTitle = document.title;
+
+function playBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+}
+
+function checkOverdueAlerts() {
+    if (!DB || !DB.assignments) return;
+    const today = D.today();
+    const hasLate = DB.assignments.some(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
+    
+    if (hasLate && !blinkInterval) {
+        playBeep();
+        let isRed = false;
+        blinkInterval = setInterval(() => {
+            document.title = isRed ? "⚠️ CẢNH BÁO: CÓ VIỆC TRỄ HẠN" : normalTitle;
+            isRed = !isRed;
+        }, 1000);
+    } else if (!hasLate && blinkInterval) {
+        clearInterval(blinkInterval);
+        blinkInterval = null;
+        document.title = normalTitle;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const loginScreen = document.getElementById('loginScreen');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginError = document.getElementById('loginError');
+
   /* === YÊU CẦU QUYỀN THÔNG BÁO DESKTOP === */
   if ("Notification" in window) {
     if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -2214,8 +2178,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* === HỆ THỐNG CHAT NỘI BỘ & AI BOT === */
-  const GROQ_API_KEY = "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"; 
+  /* === TRỢ LÝ AI GROQ & TEAM CHAT === */
+  const GROQ_API_KEY = "DÁN_API_KEY_GROQ_CỦA_BẠN_VÀO_ĐÂY"; 
+  
   const chatBtn = document.getElementById('ai-chat-btn');
   const chatWindow = document.getElementById('ai-chat-window');
   const chatClose = document.getElementById('ai-close');
@@ -2224,10 +2189,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatBody = document.getElementById('ai-body');
   const userSelect = document.getElementById('chat-user-select');
 
-  // Hiển thị danh sách nhân sự vào ô chọn
   function renderUserSelect() {
+      if (!userSelect) return;
       userSelect.innerHTML = DB.people.map(p => `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
-      // Khôi phục người dùng đã chọn trước đó (nếu có)
       const savedUser = localStorage.getItem('chat_current_user');
       if (savedUser && DB.people.find(p => p.id === savedUser)) userSelect.value = savedUser;
       userSelect.addEventListener('change', (e) => localStorage.setItem('chat_current_user', e.target.value));
@@ -2236,16 +2200,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if(chatBtn) chatBtn.addEventListener('click', () => { chatWindow.classList.add('show'); renderUserSelect(); });
   if(chatClose) chatClose.addEventListener('click', () => chatWindow.classList.remove('show'));
 
-  // LẮNG NGHE TIN NHẮN TỪ FIREBASE
   let lastChatCount = 0;
+  UI.chatSelectedMsgs = [];
   const chatDocRef = db.collection('workspaces').doc('chat_data');
-  UI.chatSelectedMsgs = []; // Mảng lưu các ID tin nhắn đang được tick chọn
-
+  
   chatDocRef.onSnapshot((doc) => {
       if (doc.exists) {
           const messages = doc.data().messages || [];
-          
-          // Lọc lại danh sách ID đã chọn để xóa những ID không còn tồn tại
           UI.chatSelectedMsgs = (UI.chatSelectedMsgs || []).filter(id => messages.some(m => (m.id || m.time) === id));
           const delBtn = document.getElementById('btn-delete-selected');
           if (delBtn) {
@@ -2268,13 +2229,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   
                   let contentHtml = esc(msg.text || '').replace(/\n/g, '<br>');
 
-                  // XỬ LÝ ĐẶC BIỆT CHO TIN NHẮN CẢNH BÁO (Tạo nút tick inline)
                   if (msg.isAlert && msg.alertTasks) {
                       let lateHtml = '', soonHtml = '';
                       msg.alertTasks.forEach(t => {
-                          // Nút tick nhỏ gọn
                           const btn = `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${t.id}" title="Click để hoàn thành">✓</button>`;
-                          // Dòng hiển thị công việc + nút tick
                           const line = `<div style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;"> <span>- ${esc(t.ten)} <span style="font-size:11px;color:#64748b;">(Hạn: ${F.date(t.deadline)})</span></span> ${btn}</div>`;
                           if (t.type === 'late') lateHtml += line;
                           else soonHtml += line;
@@ -2306,9 +2264,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // LẮNG NGHE SỰ KIỆN SỬA/XÓA
-  // Tạo nút xóa hàng loạt động
-  // Tạo nút xóa hàng loạt động (Trôi nổi)
   const delBtn = document.createElement('button');
   delBtn.id = 'btn-delete-selected';
   document.getElementById('ai-chat-window').appendChild(delBtn);
@@ -2324,28 +2279,42 @@ document.addEventListener('DOMContentLoaded', () => {
       lastChatCount = 0; 
   });
 
-  // XỬ LÝ NÚT HOÀN THÀNH CÔNG VIỆC TRÊN CHAT
-  chatBody.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-act="completeTaskFromChat"]');
-      if (!btn) return;
-      const taskId = btn.dataset.id;
-      const task = DB.assignments.find(x => x.id === taskId);
-      if (!task) return;
-      
-      task.trangThai = 'Hoàn thành';
-      task.pct = 100;
-      App.changed(false); // Lưu Firebase không cần render lại toàn bộ
-      
-      // Gửi tin nhắn xác nhận
-      const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
-      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
+  chatBody.addEventListener('change', (e) => {
+      if (e.target.classList.contains('chat-checkbox')) {
+          const msgId = e.target.dataset.id;
+          if (e.target.checked) {
+              if (!UI.chatSelectedMsgs.includes(msgId)) UI.chatSelectedMsgs.push(msgId);
+          } else {
+              UI.chatSelectedMsgs = UI.chatSelectedMsgs.filter(id => id !== msgId);
+          }
+          const btnDel = document.getElementById('btn-delete-selected');
+          if (UI.chatSelectedMsgs.length > 0) {
+              btnDel.classList.add('show');
+              btnDel.textContent = `Xóa ${UI.chatSelectedMsgs.length} tin nhắn đã chọn`;
+          } else {
+              btnDel.classList.remove('show');
+          }
+      }
   });
 
   chatBody.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-act]');
-      if (!btn) return;
-      const act = btn.dataset.act;
-      const msgId = btn.dataset.id;
+      const completeBtn = e.target.closest('[data-act="completeTaskFromChat"]');
+      if (completeBtn) {
+          const taskId = completeBtn.dataset.id;
+          const task = DB.assignments.find(x => x.id === taskId);
+          if (!task) return;
+          task.trangThai = 'Hoàn thành';
+          task.pct = 100;
+          App.changed(false); 
+          const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
+          return;
+      }
+
+      const actionBtn = e.target.closest('[data-act="editChat"], [data-act="delChat"]');
+      if (!actionBtn) return;
+      const act = actionBtn.dataset.act;
+      const msgId = actionBtn.dataset.id;
       
       const doc = await chatDocRef.get();
       let messages = doc.data().messages || [];
@@ -2358,45 +2327,95 @@ document.addEventListener('DOMContentLoaded', () => {
               messages[msgIndex].text = newText.trim();
               messages[msgIndex].isEdited = true;
               await chatDocRef.set({ messages }, { merge: true });
-              lastChatCount = 0; // Kích hoạt vẽ lại
+              lastChatCount = 0;
           }
       } 
       else if (act === 'delChat') {
           if (confirm("Bạn có chắc chắn muốn xóa tin nhắn này?")) {
               messages.splice(msgIndex, 1);
               await chatDocRef.set({ messages }, { merge: true });
-              lastChatCount = 0; // Kích hoạt vẽ lại
+              lastChatCount = 0; 
           }
       }
   });
-  // HÀM DỌN DẸP TIN NHẮN CŨ
+
   async function cleanupOldMessages() {
       try {
           const doc = await chatDocRef.get();
           if (doc.exists) {
               let messages = doc.data().messages || [];
               const originalLength = messages.length;
-              
-              // 1. Lọc bỏ tin nhắn cũ hơn 7 ngày
               const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
               messages = messages.filter(msg => new Date(msg.time).getTime() >= oneWeekAgo);
-              
-              // 2. Chỉ giữ lại tối đa 500 tin nhắn gần nhất (để chống tràn 1MB)
-              if (messages.length > 500) {
-                  messages = messages.slice(-500);
-              }
-
-              // Nếu có sự thay đổi (đã xóa bớt), thì cập nhật lại lên Firebase
-              if (messages.length < originalLength) {
-                  await chatDocRef.set({ messages: messages }, { merge: true });
-                  console.log(`Đã dọn dẹp ${originalLength - messages.length} tin nhắn cũ.`);
-              }
+              if (messages.length > 500) messages = messages.slice(-500);
+              if (messages.length < originalLength) await chatDocRef.set({ messages: messages }, { merge: true });
           }
-      } catch (e) {
-          console.error("Lỗi dọn dẹp tin nhắn:", e);
+      } catch (e) { console.error("Lỗi dọn dẹp tin nhắn:", e); }
+  }
+
+  async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      const senderId = userSelect.value;
+      if (!senderId) { toast('Vui lòng chọn tên của bạn!', 'err'); return; }
+      const senderName = personOf(senderId)?.ten || 'Ai đó';
+      chatInput.value = '';
+      await cleanupOldMessages();
+      const newMsg = { id: uid(), senderId, sender: senderName, text, time: new Date().toISOString() };
+      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(newMsg) }, { merge: true });
+      if (text.match(/@(ai|AI)\s+/)) {
+          const question = text.replace(/@(ai|AI)\s+/g, ''); 
+          await askAI(question);
       }
   }
-  // === TỰ ĐỘNG CẢNH BÁO LÚC 8H SÁNG HẰNG NGÀY ===
+
+  async function askAI(question) {
+      await cleanupOldMessages();
+      const loadingMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: 'Đang phân tích dữ liệu...', time: new Date().toISOString() };
+      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
+
+      const contextData = {
+          nhan_su: DB.people.map(p => p.ten),
+          cong_viec_qua_han: DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.deadline < D.today()).map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten, han: a.deadline })),
+          cong_viec_dang_lam: DB.assignments.filter(a => a.trangThai === 'Đang làm').map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten }))
+      };
+
+      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nCâu hỏi: ${question}`;
+
+      try {
+          const cleanKey = GROQ_API_KEY.trim(); 
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
+              body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'user', content: prompt }] })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq");
+          
+          const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
+          
+          const today = D.today(); const tomorrow = D.add(today, 1);
+          const lateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
+          const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
+          
+          if (lateTasks.length > 0 || soonTasks.length > 0) {
+              aiReply.isAlert = true;
+              aiReply.alertTasks = [];
+              lateTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
+              soonTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
+          }
+
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
+          
+      } catch (e) {
+          const errorMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: "Lỗi AI: " + e.message, time: new Date().toISOString() };
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errorMsg) }, { merge: true });
+      }
+  }
+
+  if(chatSend) chatSend.addEventListener('click', sendMessage);
+  if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
   async function checkDailyAlerts() {
       const now = new Date();
       const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
@@ -2418,95 +2437,19 @@ document.addEventListener('DOMContentLoaded', () => {
                   id: uid(), 
                   senderId: 'ai', 
                   sender: 'AI Bot', 
-                  text: '', // Không dùng text nữa mà dùng alertTasks
+                  text: '', 
                   time: new Date().toISOString(), 
                   isAlert: true, 
                   alertTasks: alertTasks
               };
-              
               await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(alertMsg) }, { merge: true });
               localStorage.setItem('lastAlertDate', todayStr);
           }
       }
   }
 
-  // Kiểm tra cảnh báo mỗi khi mở app và cứ 30 phút kiểm tra 1 lần
   setTimeout(checkDailyAlerts, 5000); 
   setInterval(checkDailyAlerts, 30 * 60 * 1000); 
-  // XỬ LÝ GỬI TIN NHẮN
-  async function sendMessage() {
-      const text = chatInput.value.trim();
-      if (!text) return;
-      
-      const senderId = userSelect.value;
-      if (!senderId) { toast('Vui lòng chọn tên của bạn!', 'err'); return; }
-      
-      const senderName = personOf(senderId)?.ten || 'Ai đó';
-      chatInput.value = '';
-
-      // GỌI HÀM DỌN DẸP TRƯỚC KHI GỬI TIN MỚI
-      await cleanupOldMessages();
-
-      // 1. Lưu tin nhắn của người dùng lên Firebase
-      const newMsg = { id: uid(), senderId, sender: senderName, text, time: new Date().toISOString() };
-      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(newMsg) }, { merge: true });
-
-      // 2. Kiểm tra xem có gọi AI không (Gõ @AI hoặc @ai)
-      if (text.match(/@(ai|AI)\s+/)) {
-          const question = text.replace(/@(ai|AI)\s+/g, ''); 
-          await askAI(question);
-      }
-  }
-
-  // GỌI AI
-  async function askAI(question) {
-      // GỌI HÀM DỌN DẸP
-      await cleanupOldMessages();
-
-      // Tạo tin nhắn chờ
-      const loadingMsg = { senderId: 'ai', sender: 'AI Bot', text: 'Đang phân tích dữ liệu...', time: new Date().toISOString() };
-
-      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
-
-      const contextData = {
-          nhan_su: DB.people.map(p => p.ten),
-          cong_viec_qua_han: DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.deadline < D.today()).map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten, han: a.deadline })),
-          cong_viec_dang_lam: DB.assignments.filter(a => a.trangThai === 'Đang làm').map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten }))
-      };
-      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nCâu hỏi: ${question}`;
-
-      try {
-          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-              body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'user', content: prompt }] })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq");
-          
-          const aiReply = { senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
-          
-          // TỰ ĐỘNG ĐÍNH KÈM NÚT TICK CHO CÁC VIỆC QUÁ HẠN/SẮP ĐẾN HẠN
-          const today = D.today(); const tomorrow = D.add(today, 1);
-          const lateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
-          const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
-          
-          if (lateTasks.length > 0 || soonTasks.length > 0) {
-              aiReply.isAlert = true;
-              aiReply.alertTasks = [];
-              lateTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
-              soonTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
-          }
-          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
-          
-      } catch (e) {
-          const errorMsg = { senderId: 'ai', sender: 'AI Bot', text: "Lỗi AI: " + e.message, time: new Date().toISOString() };
-          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errorMsg) }, { merge: true });
-      }
-  }
-
-  if(chatSend) chatSend.addEventListener('click', sendMessage);
-  if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
   async function checkPassword() {
       const enteredPass = loginPassword.value;
@@ -2520,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', () => {
               if (!window.appInitialized) {
                    window.appInitialized = true; 
                    App.init({
-                     id: 'gantt-2modules', title: 'Giao việc - QLCL', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
+                     id: 'gantt-2modules', title: 'Chuyên đề & Giao việc', tagline: 'Cải tiến · Giao việc', icon: 'target', fileName: 'QuanLyChuyenDe_GiaoViec.html', theme: THEME,
                      palette: ['#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'],
                      sample: sampleDB, empty: emptyDB, migrate, home: 'dashboard',
                      counts: () => [['Chuyên đề', DB.topics.length], ['Hoạt động PDCA', DB.topicTasks.length], ['Giao việc', DB.assignments.length], ['Nhân sự', DB.people.length]],
