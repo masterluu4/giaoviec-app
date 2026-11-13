@@ -2485,6 +2485,18 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq");
           
           const aiReply = { senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
+          
+          // TỰ ĐỘNG ĐÍNH KÈM NÚT TICK CHO CÁC VIỆC QUÁ HẠN/SẮP ĐẾN HẠN
+          const today = D.today(); const tomorrow = D.add(today, 1);
+          const lateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
+          const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
+          
+          if (lateTasks.length > 0 || soonTasks.length > 0) {
+              aiReply.isAlert = true;
+              aiReply.alertTasks = [];
+              lateTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late' }));
+              soonTasks.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon' }));
+          }
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
           
       } catch (e) {
