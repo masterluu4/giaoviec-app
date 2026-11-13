@@ -300,6 +300,13 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .ai-foot { padding: 12px; background: #fff; border-top: 1px solid #e6e9f0; display: flex; gap: 8px; }
 .ai-foot input { flex: 1; border: 1px solid #d6dce7; border-radius: 8px; padding: 8px 12px; outline: none; }
 .ai-foot button { background: var(--p); color: #fff; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; font-weight: 600; }
+/* CSS CHO TÍNH NĂNG CHỌN NHIỀU TIN NHẮN */
+#chat-multi-bar { display: none; background: #fef2f2; padding: 8px 12px; border-bottom: 1px solid #fecaca; justify-content: space-between; align-items: center; font-size: 12.5px; }
+#chat-multi-bar.show { display: flex; }
+.chat-msg-checkbox { display: none; margin-right: 8px; cursor: pointer; accent-color: var(--p); }
+.selecting .chat-msg-checkbox { display: inline-block; }
+.selecting .chat-actions { display: none !important; }
+.chat-bubble-wrap.selected .ai-msg { background: #e0f2fe !important; border-color: #7dd3fc !important; }
 </style>
 
 <!-- FIREBASE SDK & CONFIG -->
@@ -2228,31 +2235,41 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastChatCount = 0;
   const chatDocRef = db.collection('workspaces').doc('chat_data');
   
+  let lastChatCount = 0;
+  UI.chatSelectedMsgs = []; // Mảng lưu các ID tin nhắn đang được tick chọn
+
   chatDocRef.onSnapshot((doc) => {
       if (doc.exists) {
           const messages = doc.data().messages || [];
-          // Chỉ vẽ lại nếu có tin nhắn mới hoặc có thay đổi
           if (messages.length !== lastChatCount) {
               chatBody.innerHTML = messages.map(msg => {
                   const isAI = msg.sender === 'AI Bot';
                   const isMe = msg.senderId === userSelect.value && !isAI;
                   const bubbleClass = isAI ? 'ai-msg bot' : (isMe ? 'ai-msg user' : 'ai-msg bot');
                   const alignStyle = isMe ? 'background: #ccfbf1; color: #042f2e;' : (isAI ? 'background: #f0fdf4; border-color: #bbf7d0;' : '');
-                  
-                  // Lấy ID tin nhắn (fallback dùng time nếu là tin nhắn cũ chưa có ID)
                   const msgId = msg.id || msg.time;
-                  
-                  // Tin nhắn đã sửa sẽ có thêm chữ (đã sửa)
                   const editedTag = msg.isEdited ? ` <span style="font-size:10px;color:#94a3b8;font-style:italic;">(đã sửa)</span>` : '';
+                  
+                  // Nếu là tin nhắn cảnh báo, hiển thị nút Hoàn thành
+                  let actionHtml = '';
+                  if (msg.isAlert && msg.taskIds) {
+                      actionHtml = `<div style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 8px;">${msg.taskIds.map(tid => `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${tid}">✅ Xong: ${esc(msg.taskNames[tid])}</button>`).join('<br>')}</div>`;
+                  }
 
-                  return `<div class="chat-bubble-wrap ${isMe ? 'me' : 'them'}">
-                      ${(!isMe && !isAI) ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 2px; font-weight: bold; padding-left:4px;">${esc(msg.sender)}</div>` : ''}
-                      <div class="${bubbleClass}" style="${alignStyle}">
-                          ${esc(msg.text).replace(/\n/g, '<br>')}${editedTag}
-                      </div>
-                      <div class="chat-actions">
-                          ${isMe ? `<button class="chat-action-btn" data-act="editChat" data-id="${msgId}">✏️ Sửa</button>` : ''}
-                          ${(isMe || isAI) ? `<button class="chat-action-btn del" data-act="delChat" data-id="${msgId}">🗑️ Xóa</button>` : ''}
+                  const isChecked = UI.chatSelectedMsgs.includes(msgId) ? 'checked' : '';
+
+                  return `<div class="chat-msg-row ${isMe ? 'me' : ''}">
+                      <input type="checkbox" class="chat-checkbox" data-id="${msgId}" ${isChecked}>
+                      <div class="chat-bubble-wrap ${isMe ? 'me' : 'them'}" style="max-width: calc(100% - 24px); margin-bottom: 0;">
+                          ${(!isMe && !isAI) ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 2px; font-weight: bold; padding-left:4px;">${esc(msg.sender)}</div>` : ''}
+                          <div class="${bubbleClass}" style="${alignStyle}">
+                              ${esc(msg.text).replace(/\n/g, '<br>')}${editedTag}
+                              ${actionHtml}
+                          </div>
+                          <div class="chat-actions">
+                              ${(isMe && !msg.isAlert) ? `<button class="chat-action-btn" data-act="editChat" data-id="${msgId}">✏️ Sửa</button>` : ''}
+                              ${(isMe || isAI) ? `<button class="chat-action-btn del" data-act="delChat" data-id="${msgId}">🗑️ Xóa</button>` : ''}
+                          </div>
                       </div>
                   </div>`;
               }).join('');
@@ -2262,7 +2279,60 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
+  // XỬ LÝ TICK CHỌN NHIỀU TIN NHẮN
+  chatBody.addEventListener('change', (e) => {
+      if (e.target.classList.contains('chat-checkbox')) {
+          const msgId = e.target.dataset.id;
+          if (e.target.checked) {
+              if (!UI.chatSelectedMsgs.includes(msgId)) UI.chatSelectedMsgs.push(msgId);
+          } else {
+              UI.chatSelectedMsgs = UI.chatSelectedMsgs.filter(id => id !== msgId);
+          }
+          // Hiện/Ẩn nút xóa hàng loạt
+          const btnDel = document.getElementById('btn-delete-selected');
+          if (UI.chatSelectedMsgs.length > 0) {
+              btnDel.classList.add('show');
+              btnDel.textContent = `Xóa ${UI.chatSelectedMsgs.length} tin nhắn đã chọn`;
+          } else {
+              btnDel.classList.remove('show');
+          }
+      }
+  });
+
   // LẮNG NGHE SỰ KIỆN SỬA/XÓA
+  // Tạo nút xóa hàng loạt động
+  const delBtn = document.createElement('button');
+  delBtn.id = 'btn-delete-selected';
+  chatBody.parentNode.insertBefore(delBtn, chatBody.nextSibling); // Chèn ngay dưới khung chat
+
+  delBtn.addEventListener('click', async () => {
+      if (!confirm(`Bạn có chắc muốn xóa ${UI.chatSelectedMsgs.length} tin nhắn này?`)) return;
+      const doc = await chatDocRef.get();
+      let messages = doc.data().messages || [];
+      messages = messages.filter(m => !UI.chatSelectedMsgs.includes(m.id || m.time));
+      await chatDocRef.set({ messages }, { merge: true });
+      UI.chatSelectedMsgs = [];
+      delBtn.classList.remove('show');
+      lastChatCount = 0; 
+  });
+
+  // XỬ LÝ NÚT HOÀN THÀNH CÔNG VIỆC TRÊN CHAT
+  chatBody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-act="completeTaskFromChat"]');
+      if (!btn) return;
+      const taskId = btn.dataset.id;
+      const task = DB.assignments.find(x => x.id === taskId);
+      if (!task) return;
+      
+      task.trangThai = 'Hoàn thành';
+      task.pct = 100;
+      App.changed(false); // Lưu Firebase không cần render lại toàn bộ
+      
+      // Gửi tin nhắn xác nhận
+      const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
+      await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
+  });
+
   chatBody.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
@@ -2318,6 +2388,65 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error("Lỗi dọn dẹp tin nhắn:", e);
       }
   }
+  // === TỰ ĐỘNG CẢNH BÁO LÚC 8H SÁNG HẰNG NGÀY ===
+  async function checkDailyAlerts() {
+      // Lấy thời gian hiện tại theo múi giờ Việt Nam (UTC+7)
+      const now = new Date();
+      const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+      const todayStr = vnTime.toISOString().slice(0, 10);
+      
+      // Chỉ chạy nếu đã qua 8h sáng và chưa chạy trong hôm nay
+      if (vnTime.getHours() >= 8 && localStorage.getItem('lastAlertDate') !== todayStr) {
+          const today = todayStr;
+          const tomorrow = D.add(today, 1);
+          
+          const lateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
+          const soonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
+
+          if (lateTasks.length > 0 || soonTasks.length > 0) {
+              let alertText = "🔔 **Báo cáo nhắc việc 8h sáng:**\n\n";
+              let taskIds = [];
+              let taskNames = {};
+
+              if (lateTasks.length > 0) {
+                  alertText += `🚨 **CẢNH BÁO ĐỎ - QUÁ HẠN (${lateTasks.length} việc):**\n`;
+                  lateTasks.forEach(t => {
+                      alertText += `- ${t.ten} (Hạn: ${F.date(t.deadline)})\n`;
+                      taskIds.push(t.id);
+                      taskNames[t.id] = t.ten.slice(0,20) + '...';
+                  });
+                  alertText += "\n";
+              }
+
+              if (soonTasks.length > 0) {
+                  alertText += `⏳ **SẮP ĐẾN HẠN (Còn 1 ngày - ${soonTasks.length} việc):**\n`;
+                  soonTasks.forEach(t => {
+                      alertText += `- ${t.ten} (Hạn: ${F.date(t.deadline)})\n`;
+                      taskIds.push(t.id);
+                      taskNames[t.id] = t.ten.slice(0,20) + '...';
+                  });
+              }
+
+              const alertMsg = { 
+                  id: uid(), 
+                  senderId: 'ai', 
+                  sender: 'AI Bot', 
+                  text: alertText, 
+                  time: new Date().toISOString(), 
+                  isAlert: true, 
+                  taskIds: taskIds,
+                  taskNames: taskNames
+              };
+              
+              await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(alertMsg) }, { merge: true });
+              localStorage.setItem('lastAlertDate', todayStr); // Đánh dấu đã chạy hôm nay
+          }
+      }
+  }
+
+  // Kiểm tra cảnh báo mỗi khi mở app và cứ 30 phút kiểm tra 1 lần
+  setTimeout(checkDailyAlerts, 5000); 
+  setInterval(checkDailyAlerts, 30 * 60 * 1000); 
   // XỬ LÝ GỬI TIN NHẮN
   async function sendMessage() {
       const text = chatInput.value.trim();
@@ -2358,7 +2487,7 @@ document.addEventListener('DOMContentLoaded', () => {
           cong_viec_qua_han: DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.deadline < D.today()).map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten, han: a.deadline })),
           cong_viec_dang_lam: DB.assignments.filter(a => a.trangThai === 'Đang làm').map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten }))
       };
-      const prompt = `Bạn là trợ lý quản lý dự án. Dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nHãy trả lời câu hỏi sau ngắn gọn, thân thiện bằng tiếng Việt:\nCâu hỏi: ${question}`;
+      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nCâu hỏi: ${question}`;
 
       try {
           const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
