@@ -273,7 +273,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 #ai-chat-btn svg { width: 28px; height: 28px; }
 #ai-chat-window { position: fixed; bottom: 90px; right: 24px; width: 360px; height: 500px; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.15); display: none; flex-direction: column; z-index: 1000; border: 1px solid #e6e9f0; overflow: hidden; }
 #ai-chat-window.show { display: flex; animation: pop .2s; }
-.ai-head { background: var(--p); color: #fff; padding: 12px 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ai-head { background: var(--p); color: #fff; padding: 12px 16px; font-weight: 700; display: flex; flex-direction: column; gap: 8px; }
+.ai-head-top { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 14px; }
 .ai-head button { background: transparent; border: 0; color: #fff; cursor: pointer; font-size: 18px; }
 .ai-body { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f8fafc; position: relative; }
 .ai-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; white-space: normal; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.05); margin-bottom: 6px; }
@@ -337,27 +338,27 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 </div>
 <div id="ai-chat-window">
   <div class="ai-head">
-    <span>💬 Kênh trao đổi đội nhóm</span>
-    <button id="ai-close" style="margin-left:auto;">×</button>
-    <div style="width: 100%; display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 4px;">
-      <span>Bạn là:</span>
-      <select id="chat-user-select" style="flex: 1; padding: 4px; border-radius: 4px; border: none; color: #1f2937;"></select>
+    <div class="ai-head-top">
+      <span>💬 Kênh trao đổi đội nhóm</span>
+      <button id="ai-close">×</button>
     </div>
-    <div style="width: 100%; text-align: center; font-size: 11px; color: #e0f2fe; opacity: 0.8; margin-top: 4px;">
-      (Tin nhắn tự động xóa sau 7 ngày)
-    <!-- THÊM ĐOẠN NÀY VÀO -->
-    <div style="width: 100%; display: flex; align-items: center; margin-top: 8px; font-size: 12px; padding: 0 4px;">
-      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff;">
-        <input type="checkbox" id="chat-select-all" style="width: 15px; height: 15px; accent-color: #fff;">
-        Chọn tất cả tin nhắn
+    <div style="width: 100%; display: flex; gap: 8px; align-items: center; font-size: 12px;">
+      <span>Bạn là:</span>
+      <select id="chat-user-select" style="flex: 1; padding: 4px; border-radius: 4px; border: none; color: #1f2937; outline: none;"></select>
+    </div>
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;">
+      <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff; font-weight: 600;">
+        <input type="checkbox" id="chat-select-all" style="width: 15px; height: 15px; accent-color: #fff; cursor: pointer;">
+        Chọn tất cả
       </label>
+      <span style="opacity: 0.8; font-style: italic; color: #e0f2fe;">(Tự xóa sau 7 ngày)</span>
     </div>
   </div>
   <div class="ai-body" id="ai-body">
     <!-- Tin nhắn sẽ được load từ Firebase vào đây -->
   </div>
   <div class="ai-foot">
-    <input type="text" id="ai-input" placeholder="Nhập tin nhắn... (Gõ @AI để hỏi trợ lý)">
+    <input type="text" id="ai-input" placeholder="Nhập tin nhắn... (Gõ @AI để hỏi)">
     <button id="ai-send">Gửi</button>
   </div>
 </div>
@@ -2194,6 +2195,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatInput = document.getElementById('ai-input');
   const chatBody = document.getElementById('ai-body');
   const userSelect = document.getElementById('chat-user-select');
+  const selectAllBtn = document.getElementById('chat-select-all');
 
   function renderUserSelect() {
       if (!userSelect) return;
@@ -2213,7 +2215,10 @@ document.addEventListener('DOMContentLoaded', () => {
   chatDocRef.onSnapshot((doc) => {
       if (doc.exists) {
           const messages = doc.data().messages || [];
+          
+          // Lọc lại danh sách ID đã chọn để xóa những ID không còn tồn tại
           UI.chatSelectedMsgs = (UI.chatSelectedMsgs || []).filter(id => messages.some(m => (m.id || m.time) === id));
+          
           const delBtn = document.getElementById('btn-delete-selected');
           if (delBtn) {
               if (UI.chatSelectedMsgs.length > 0) {
@@ -2222,6 +2227,11 @@ document.addEventListener('DOMContentLoaded', () => {
               } else {
                   delBtn.classList.remove('show');
               }
+          }
+          
+          if (selectAllBtn) {
+              const allChecked = messages.length > 0 && messages.every(m => UI.chatSelectedMsgs.includes(m.id || m.time));
+              selectAllBtn.checked = allChecked;
           }
 
           if (messages.length !== lastChatCount) {
@@ -2287,6 +2297,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await chatDocRef.set({ messages }, { merge: true });
       UI.chatSelectedMsgs = [];
       delBtn.classList.remove('show');
+      if (selectAllBtn) selectAllBtn.checked = false;
       lastChatCount = 0; 
   });
 
@@ -2298,6 +2309,7 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
               UI.chatSelectedMsgs = UI.chatSelectedMsgs.filter(id => id !== msgId);
           }
+          
           const btnDel = document.getElementById('btn-delete-selected');
           if (UI.chatSelectedMsgs.length > 0) {
               btnDel.classList.add('show');
@@ -2305,17 +2317,15 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
               btnDel.classList.remove('show');
           }
-          // Cập nhật lại trạng thái nút "Chọn tất cả"
+
           if (selectAllBtn) {
               const checkboxes = document.querySelectorAll('.chat-checkbox');
               const allChecked = Array.from(checkboxes).length > 0 && Array.from(checkboxes).every(cb => cb.checked);
               selectAllBtn.checked = allChecked;
           }
       }
-
   });
-  // XỬ LÝ CHỌN TẤT CẢ
-  const selectAllBtn = document.getElementById('chat-select-all');
+
   if (selectAllBtn) {
       selectAllBtn.addEventListener('change', (e) => {
           const isChecked = e.target.checked;
@@ -2326,12 +2336,11 @@ document.addEventListener('DOMContentLoaded', () => {
               const msgId = cb.dataset.id;
               if (isChecked) {
                   if (!UI.chatSelectedMsgs.includes(msgId)) UI.chatSelectedMsgs.push(msgId);
-              } else {
-                  UI.chatSelectedMsgs = [];
               }
           });
+          
+          if (!isChecked) UI.chatSelectedMsgs = [];
 
-          // Cập nhật nút xóa hàng loạt
           const btnDel = document.getElementById('btn-delete-selected');
           if (UI.chatSelectedMsgs.length > 0) {
               btnDel.classList.add('show');
@@ -2351,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', () => {
           task.trangThai = 'Hoàn thành';
           task.pct = 100;
           App.changed(false); 
-
+          
           const personName = personOf(task.nguoiNhan)?.ten || 'ai đó';
           const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" của ${personName} đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
@@ -2418,7 +2427,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function askAI(question) {
       await cleanupOldMessages();
-
+      
       const contextData = {
           nhan_su: DB.people.map(p => p.ten),
           cong_viec_qua_han: DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.deadline < D.today()).map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten, han: a.deadline })),
