@@ -810,7 +810,7 @@ function addCSS(t) { const s = document.createElement('style'); s.dataset.runtim
 function onVal(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('change', () => fn(el.value)); }
 function selectHTML(id, opts, val, cls = '') { return `<select class="inp ${cls}" id="${id}">${optList(opts).map(o => `<option value="${esc(o.value)}" ${String(o.value) === String(val) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`; }
 function settingsCard(title, fields, obj, cols = 2, onSaved) { const id = 'sf' + Math.random().toString(36).slice(2, 7); setTimeout(() => { const box = document.getElementById(id); if (!box) return; box.querySelector('[data-sfsave]').onclick = () => { Object.assign(obj, readForm(box, fields)); App.changed(false); onSaved && onSaved(); toast('Đã cập nhật cài đặt', 'ok'); }; }); return `<div id="${id}">${card(title, formHTML(fields, obj, cols) + `<div class="row mt"><button class="btn pri" data-sfsave>${ic('check')} Lưu cài đặt</button></div>`)}</div>`; }
-const COMPANY_FIELDS = [{ key: 'ten', label: 'Tên công ty / cửa hàng', full: true }, { key: 'diaChi', label: 'Địa chỉ', full: true }, { key: 'sdt', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'mst', label: 'Mã số thuế' }, { key: 'website', label: 'Website' }, { key: 'logo', label: 'Logo (hiện trên bản in)', type: 'image', max: 300, full: true }];
+const COMPANY_FIELDS = [{ key: 'ten', label: 'Tên công ty', full: true }, { key: 'diaChi', label: 'Địa chỉ', full: true }, { key: 'sdt', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'mst', label: 'Zalo' }, { key: 'website', label: 'Website' }, { key: 'logo', label: 'Logo (hiện trên bản in)', type: 'image', max: 300, full: true }];
 </script>
 
 <script>
@@ -829,7 +829,7 @@ const PRI_B = { 'Cao': 'b-red', 'Trung bình': 'b-amber', 'Thấp': '' };
 const PCOL = ['#0d9488', '#2563eb', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#64748b'];
 
 /* === Dữ liệu === */
-function defaultSettings() { return { company: { ten: 'Công ty TNHH Bán lẻ An Phát', diaChi: '88 Nguyễn Trãi, Thanh Xuân, Hà Nội', sdt: '0912 345 678', email: 'contact@anphat.vn', mst: '', website: 'anphat.vn', logo: '' }, calMode: 'cal', warnDays: 7 }; }
+function defaultSettings() { return { company: { ten: 'Phòng QLCL xe Thương mại', diaChi: 'Chu Lai Truong Hai Automotive Mechanical Industrial Zone, Nui Thanh, Da Nang City, Vietnam', sdt: '0335573141', email: 'Masterluu.com', mst: '', website: 'masterluu.com', logo: '' }, calMode: 'cal', warnDays: 7 }; }
 function emptyDB() { return { settings: defaultSettings(), people: [], topics: [], topicTasks: [], assignments: [] }; }
 function migrate(db) {
   db.settings = Object.assign(defaultSettings(), db.settings || {});
