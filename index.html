@@ -2078,6 +2078,7 @@ const vBBH = {
   count: () => (DB.batches || []).length || '',
   tools: () => `<button class="btn pri" data-act="bbhAdd">${ic('plus')} Tạo đợt mới</button>`,
   render(el) {
+    if (UI.sub === 'detail' && UI.asmId) return renderTaskDetail(el);
     if (UI.sub === 'batch_detail' && UI.batchId) return renderBatchDetail(el);
     renderBBHList(el);
   }
@@ -2132,7 +2133,7 @@ Object.assign(ACT, {
   asmAdd: () => assignForm(null, true),
   asmEdit: d => assignForm(DB.assignments.find(x => x.id === d.id), false),
   asmView: d => { UI.sub = 'detail'; UI.asmId = d.id; UI.tab.taskDetail = 'info'; App.render(); },
-  asmBack: () => { UI.sub = null; UI.asmId = null; App.render(); },
+  asmBack: () => { UI.sub = UI.batchId ? 'batch_detail' : null; UI.asmId = null; App.render(); },
   asmTab: d => { UI.tab.tasks = d.v; App.render(); },
   taskTab: d => { UI.tab.taskDetail = d.v; App.render(); },
   asmFilter: d => { UI.asmFilter.state = d.v; App.render(); },
@@ -2788,18 +2789,17 @@ document.addEventListener('DOMContentLoaded', () => {
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
 
           // CẢI TIẾN PROMPT ĐỂ GỘP VẤN ĐỀ + CÔNG VIỆC
-          const prompt = `Bạn là một trợ lý ảo chuyên nghiệp. Hãy đọc bảng công việc trong bức ảnh này.
-Hãy trích xuất danh sách các công việc. Trả về DUY NHẤT định dạng JSON hợp lệ là một mảng như sau:
+          const prompt = `Bạn là chuyên gia trích xuất dữ liệu từ bảng biểu. Hãy đọc bảng trong ảnh và trả về DUY NHẤT định dạng JSON mảng:
 [
-  {"ten": "Nội dung công việc", "nguoi": "Tên người phụ trách", "han": "YYYY-MM-DD"}
+  {"ten": "Tên công việc", "nguoi": "Tên người nhận", "han": "YYYY-MM-DD"}
 ]
-Quy tắc trích xuất:
-1. Cột "Vấn đề" (thường là cột 2) và cột "Công việc thực hiện" (thường là cột 3).
-2. Nếu cột "Vấn đề" bị gộp ô (1 vấn đề áp dụng cho nhiều dòng công việc), hãy lặp lại nội dung "Vấn đề" đó cho từng dòng.
-3. Tên công việc đầu ra phải nối liền 2 cột lại với nhau theo cú pháp: "[Vấn đề] - [Công việc thực hiện]".
-4. Cột "T.nhiệm" là "nguoi" (người phụ trách). Nếu có nhiều người, hãy lấy người đầu tiên.
-5. Cột "H.thành" là "han". Định dạng ngày trong ảnh thường là DD/MM/YYYY, hãy chuyển thành YYYY-MM-DD (ví dụ: 20/11/2026 thành 2026-11-20).
-6. Bỏ qua các dòng tiêu đề, chỉ lấy các dòng có công việc thực tế.`;
+QUY TẮC BẮT BUỘC:
+1. Cột "Vấn đề" (cột thứ 2) và cột "Công việc thực hiện" (cột thứ 3). BẠN PHẢI GHÉP CẢ 2 CỘT NÀY LẠI thành trường "ten".
+   Ví dụ: Vấn đề ghi "Đối với 04 báo cáo..." và Công việc ghi "BJM sẽ theo dõi tình hình...". Thì "ten" phải là: "[Đối với 04 báo cáo...] - [BJM sẽ theo dõi tình hình...]".
+   Lưu ý: Nếu ô "Vấn đề" bị gộp (1 vấn đề cho nhiều công việc), hãy lặp lại vấn đề đó cho từng dòng.
+2. Cột "T.nhiệm" là trường "nguoi". Nếu có nhiều người, chọn người đầu tiên.
+3. Cột "H.thành" là trường "han". Đổi DD/MM/YYYY thành YYYY-MM-DD.
+4. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
 
           try {
               const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
