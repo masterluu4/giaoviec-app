@@ -2633,9 +2633,8 @@ document.addEventListener('DOMContentLoaded', () => {
           cong_viec_sap_den_han: allSoonTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline }))
       };
 
-      // PROMPT NÂNG CẤP: Yêu cầu AI trả về JSON nếu là lệnh giao việc
       const prompt = `Bạn là trợ lý quản lý dự án. Hôm nay là ${today}.
-Nhiệm vụ 1: Nếu người dùng yêu cầu GIAO VIỆC, hãy trích xuất thông tin và CHỈ TRẢ VỀ chuỗi JSON hợp lệ theo mẫu sau (Không kèm text giải thích):
+Nhiệm vụ 1: Nếu người dùng yêu cầu GIAO VIỆC, hãy trích xuất thông tin và CHỈ TRẢ VỀ chuỗi JSON hợp lệ theo mẫu sau (Không kèm text giải thích, không dùng markdown):
 {"action": "create_task", "ten": "Tên công việc", "nguoiNhan": "Tên người nhận (nếu có)", "deadline": "YYYY-MM-DD (nếu có, nếu không có thì để trống)"}
 Nhiệm vụ 2: Nếu là câu hỏi bình thường, hãy trả lời tự nhiên, ngắn gọn, thân thiện như một thư ký.
 Dữ liệu công ty: ${JSON.stringify(contextData)}
@@ -2653,47 +2652,53 @@ Câu hỏi: ${question}`;
           
           let aiText = data.choices[0].message.content;
           
-          // KIỂM TRA XEM AI CÓ TRẢ VỀ LỆNH GIAO VIỆC KHÔNG (Dạng JSON)
-          if (aiText.includes('"action": "create_task"')) {
-              try {
-                  // Trích xuất JSON từ câu trả lời của AI (đề phòng AI trả về kèm markdown)
-                  const jsonStr = aiText.substring(aiText.indexOf('{'), aiText.lastIndexOf('}') + 1);
-                  const taskData = JSON.parse(jsonStr);
-                  
-                  // Tìm người nhận theo tên
-                  let assigneeId = '';
-                  if (taskData.nguoiNhan) {
-                      const found = DB.people.find(p => p.ten.toLowerCase().includes(taskData.nguoiNhan.toLowerCase()) || taskData.nguoiNhan.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase()));
-                      if (found) assigneeId = found.id;
-                  }
-                  
-                  // Tạo công việc mới
-                  const newTask = {
-                      id: uid(), ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'),
-                      ten: taskData.ten || 'Công việc chưa đặt tên',
-                      moTa: 'Tạo tự động bởi AI Chat',
-                      nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
-                      start: today, deadline: taskData.deadline || D.add(today, 3),
-                      uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, lyDoTre: '',
-                      dep: '', checklist: [], comments: [], dinhKem: [], log: []
-                  };
-                  DB.assignments.push(newTask);
-                  App.changed(false);
-                  
-                  // Báo cáo lại
-                  aiText = `✅ Em đã tự động thêm công việc **"${newTask.ten}"** vào hệ thống!\n- Người nhận: ${assigneeId ? personOf(assigneeId).ten : 'Chưa giao'}\n- Hạn chót: ${F.date(newTask.deadline)}`;
-              } catch (err) {
-                  aiText = "Em nhận diện được lệnh giao việc nhưng chưa trích xuất được thông tin. Sếp vui lòng thử lại với cú pháp rõ ràng hơn.";
+          // CẢI TIẾN: Thử phân tích cú pháp JSON trực tiếp thay vì tìm kiếm chuỗi
+          let isCreateTask = false;
+          let taskData = null;
+          try {
+              // Tìm và trích xuất JSON từ câu trả lời của AI (đề phòng AI trả về kèm markdown)
+              const jsonStr = aiText.substring(aiText.indexOf('{'), aiText.lastIndexOf('}') + 1);
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.action === 'create_task') {
+                  isCreateTask = true;
+                  taskData = parsed;
               }
+          } catch (err) {
+              // Nếu không phải JSON thì bỏ qua, AI đang trả lời chat bình thường
+          }
+          
+          if (isCreateTask && taskData) {
+              // Tìm người nhận theo tên
+              let assigneeId = '';
+              if (taskData.nguoiNhan) {
+                  const found = DB.people.find(p => p.ten.toLowerCase().includes(taskData.nguoiNhan.toLowerCase()) || taskData.nguoiNhan.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase()));
+                  if (found) assigneeId = found.id;
+              }
+              
+              // Tạo công việc mới
+              const newTask = {
+                  id: uid(), ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'),
+                  ten: taskData.ten || 'Công việc chưa đặt tên',
+                  moTa: 'Tạo tự động bởi AI Chat',
+                  nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
+                  start: today, deadline: taskData.deadline || D.add(today, 3),
+                  uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, lyDoTre: '',
+                  dep: '', checklist: [], comments: [], dinhKem: [], log: []
+              };
+              DB.assignments.push(newTask);
+              App.changed(false); // Lưu lên Firebase mà không làm giật màn hình
+              
+              // Báo cáo lại cho người dùng
+              aiText = `✅ Em đã tự động thêm công việc **"${newTask.ten}"** vào hệ thống!<br>- Người nhận: <b>${assigneeId ? personOf(assigneeId).ten : 'Chưa giao'}</b><br>- Hạn chót: <b>${F.date(newTask.deadline)}</b>`;
           }
 
           const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: aiText, time: new Date().toISOString() };
           
-          // Bộ lọc đính kèm danh sách quá hạn như cũ
+          // Bộ lọc đính kèm danh sách quá hạn
           const workKeywords = ['công việc', 'quá hạn', 'tiến độ', 'trễ', 'deadline', 'hạn chót', 'sắp đến hạn', 'việc', 'task', 'cần làm', 'chưa xong', 'hoàn thành'];
           const isWorkQuery = workKeywords.some(kw => question.toLowerCase().includes(kw));
 
-          if (isWorkQuery) {
+          if (isWorkQuery && !isCreateTask) {
               let filteredLate = allLateTasks, filteredSoon = allSoonTasks;
               const foundPerson = DB.people.find(p => question.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase())); 
               if (foundPerson) {
