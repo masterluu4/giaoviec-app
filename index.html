@@ -2656,8 +2656,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const allLateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
       const allSoonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
 
+      // Lấy số liệu tổng quan để AI trả lời chính xác
+      const asms = DB.assignments.map(asmDerived);
+      const totalTasks = asms.length;
+      const doingTasks = asms.filter(a => a.trangThai === 'Đang làm').length;
+      const doneTasks = asms.filter(a => a.trangThai === 'Hoàn thành').length;
+      const lateTasksCount = asms.filter(a => a.late).length;
+
       const contextData = {
+          tong_quan: {
+              tong_cong_viec: totalTasks,
+              dang_thuc_hien: doingTasks,
+              da_hoan_thanh: doneTasks,
+              qua_han: lateTasksCount
+          },
           nhan_su: DB.people.map(p => p.ten),
+          danh_sach_viec_dang_lam: asms.filter(a => a.trangThai === 'Đang làm').map(a => ({ 
+              ten: a.ten, 
+              nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', 
+              han: a.deadline 
+          })),
           cong_viec_qua_han: allLateTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline })),
           cong_viec_sap_den_han: allSoonTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline }))
       };
@@ -2665,7 +2683,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const prompt = `Bạn là trợ lý quản lý dự án. Hôm nay là ${today}.
 Nhiệm vụ 1: Nếu người dùng yêu cầu GIAO VIỆC, hãy trích xuất thông tin và CHỈ TRẢ VỀ chuỗi JSON hợp lệ theo mẫu sau (Không kèm text giải thích, không dùng markdown):
 {"action": "create_task", "ten": "Tên công việc", "nguoiNhan": "Tên người nhận (nếu có)", "deadline": "YYYY-MM-DD (nếu có, nếu không có thì để trống)"}
-Nhiệm vụ 2: Nếu là câu hỏi bình thường, hãy trả lời tự nhiên, ngắn gọn, thân thiện như một thư ký.
+Nhiệm vụ 2: Nếu là câu hỏi bình thường, hãy dựa vào dữ liệu JSON dưới đây để trả lời tự nhiên, ngắn gọn, thân thiện như một thư ký. TUYỆT ĐỐI KHÔNG bịa ra số liệu nếu không có trong JSON.
 Dữ liệu công ty: ${JSON.stringify(contextData)}
 Câu hỏi: ${question}`;
 
