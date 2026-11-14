@@ -2555,7 +2555,7 @@ document.addEventListener('DOMContentLoaded', () => {
           App.changed(false); 
           
           const personName = personOf(task.nguoiNhan)?.ten || 'ai đó';
-          const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" của ${personName} đã hoàn thành. Chúc mừng sếp nhé! 🎉`, time: new Date().toISOString() };
+          const confirmMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `Tuyệt vời! Em đã ghi nhận công việc "${task.ten}" của ${personName} đã hoàn thành. Chúc mừng nhé! 🎉`, time: new Date().toISOString() };
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(confirmMsg) }, { merge: true });
           return;
       }
@@ -2689,7 +2689,7 @@ Câu hỏi: ${question}`;
               App.changed(false); // Lưu lên Firebase mà không làm giật màn hình
               
               // Báo cáo lại cho người dùng
-              aiText = `✅ Em đã tự động thêm công việc **"${newTask.ten}"** vào hệ thống!<br>- Người nhận: <b>${assigneeId ? personOf(assigneeId).ten : 'Chưa giao'}</b><br>- Hạn chót: <b>${F.date(newTask.deadline)}</b>`;
+              aiText = `✅ Em đã tự động thêm công việc giúp sếp: "${newTask.ten}"\n- Người nhận: ${assigneeId ? personOf(assigneeId).ten : 'Chưa giao'}\n- Hạn chót: ${F.date(newTask.deadline)}`;
           }
 
           const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: aiText, time: new Date().toISOString() };
