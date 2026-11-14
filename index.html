@@ -245,8 +245,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .gantt-wrapper:fullscreen { border-radius: 0; border: 0; padding: 10px; background: #fff; width: 100vw; height: 100vh; }
 .gt-split{display:flex;background:#fff;border:1px solid #cbd5e1;overflow:auto;position:relative;align-items:flex-start;max-height:calc(100vh - 220px);flex: 1;}
 .gantt-wrapper:fullscreen .gt-split { max-height: none; height: 100%; }
-.gt-left{flex-shrink:0;width:720px;background:#fff;border-right:2px solid #94a3b8;z-index:5;position:sticky;left:0}
-.gt-right{flex-shrink:0;position:relative}
+.gt-left{flex-shrink:0;width:720px;background:#fff;border-right:1px solid #cbd5e1;z-index:5;position:sticky;left:0; overflow:hidden;}
+.gt-right{flex-shrink:0;position:relative; background:#fff;}
 .gt-right-sticky{flex-shrink:0;width:160px;background:#fff;border-left:2px solid #94a3b8;box-shadow:-4px 0 10px -6px rgba(16,24,40,.18);z-index:5;position:sticky;right:0}
 .gt-table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 0; }
 .gt-table th, .gt-table td { border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 13px; box-sizing: border-box; }
@@ -1426,7 +1426,7 @@ function renderTopicGantt(el) {
     <div class="gt-split" id="ganttSplit">
       <div class="gt-left">
         <table class="gt-table">
-          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Hạng mục</th><th class="col-nguoi">Trách nhiệm</th></tr></thead>
+          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Hạng mục</th><th class="col-nguoi" style="border-right: none;">Trách nhiệm</th>
           <tbody>
             ${svgRows.map(r => {
               if (r.isTitleRow) return `<tr class="gt-title-row" style="height:${ROW_H}px"><td colspan="3">${esc(r.ten)}</td></tr>`;
