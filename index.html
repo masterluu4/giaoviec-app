@@ -691,6 +691,7 @@ const Print = {
 let DB = null;
 const Store = {
   fileName() { return 'Online DB'; },
+  
   load() {
     const t = ($('#app-data') || {}).textContent || '';
     try { DB = t.trim() ? JSON.parse(t) : null; } catch (e) { DB = null; }
@@ -702,13 +703,22 @@ const Store = {
       if (doc.exists) {
         const cloudData = doc.data().payload;
         if (cloudData) {
+          // 1. Chuyển đổi log từ object sang mảng [date, value] nếu có
           if (cloudData.topicTasks) {
-             cloudData.topicTasks.forEach(t => { if(t.log) t.log = t.log.map(l => Array.isArray(l) ? l : [l.d || l.date || '', l.v || l.value || 0]); });
+             cloudData.topicTasks.forEach(t => { 
+                if(t.log) t.log = t.log.map(l => Array.isArray(l) ? l : [l.d || l.date || '', l.v || l.value || 0]); 
+             });
           }
           if (cloudData.assignments) {
-             cloudData.assignments.forEach(a => { if(a.log) a.log = a.log.map(l => Array.isArray(l) ? l : [l.d || l.date || '', l.v || l.value || 0]); });
+             cloudData.assignments.forEach(a => { 
+                if(a.log) a.log = a.log.map(l => Array.isArray(l) ? l : [l.d || l.date || '', l.v || l.value || 0]); 
+             });
           }
 
+          // 2. TỰ ĐỘNG BACKUP KHI CÓ DỮ LIỆU MỚI
+          Store.autoBackup(cloudData);
+
+          // 3. Thông báo Desktop khi có việc mới
           if (DB && DB.assignments && cloudData.assignments && cloudData.assignments.length > DB.assignments.length) {
               if ("Notification" in window && Notification.permission === "granted") {
                   const newTask = cloudData.assignments[cloudData.assignments.length - 1];
@@ -719,6 +729,7 @@ const Store = {
               }
           }
 
+          // 4. Cập nhật giao diện nếu có thay đổi từ người khác
           if (JSON.stringify(cloudData) !== JSON.stringify(DB)) {
             DB = cloudData;
             App.cfg.migrate && App.cfg.migrate(DB);
@@ -729,26 +740,76 @@ const Store = {
           }
         }
       } else {
+        // Lần đầu chạy, đẩy dữ liệu mẫu lên Cloud
         docRef.set({ payload: DB });
       }
     });
   },
+
+  async autoBackup(dataToBackup) {
+      try {
+          const todayStr = D.today(); // YYYY-MM-DD
+          const backupRef = db.collection('workspaces').doc('team_data').collection('backups').doc(todayStr);
+          
+          const docSnap = await backupRef.get();
+          if (!docSnap.exists) {
+              // Tạo bản sao lưu mới
+              await backupRef.set({
+                  payload: dataToBackup,
+                  createdAt: new Date().toISOString()
+              });
+              console.log(`[Hệ thống] Đã tự động sao lưu dữ liệu ngày ${todayStr}`);
+
+              // TỰ ĐỘNG DỌN DẸP CÁC BẢN CŨ HƠN 30 NGÀY
+              const thirtyDaysAgo = D.add(todayStr, -30);
+              const oldBackups = await db.collection('workspaces').doc('team_data').collection('backups')
+                                      .where('createdAt', '<', new Date(thirtyDaysAgo).toISOString())
+                                      .get();
+              if (!oldBackups.empty) {
+                  const batch = db.batch();
+                  oldBackups.forEach(doc => batch.delete(doc.ref));
+                  await batch.commit();
+                  console.log(`[Hệ thống] Đã dọn dẹp ${oldBackups.size} bản sao lưu cũ.`);
+              }
+          }
+      } catch (e) {
+          console.error("Lỗi auto backup:", e);
+      }
+  },
+  
   changed() { 
     const el = $('#saveState'); 
     if (el) el.querySelector('span').textContent = 'Đang đồng bộ...';
+    
     const cleanDB = JSON.parse(JSON.stringify(DB)); 
+    
+    // Chuyển mảng log thành object {date, value} để tránh lỗi Firebase
     if (cleanDB.topicTasks) {
       cleanDB.topicTasks.forEach(t => { if(t.log) t.log = t.log.map(l => ({ date: l[0], value: l[1] })); });
     }
     if (cleanDB.assignments) {
       cleanDB.assignments.forEach(a => { if(a.log) a.log = a.log.map(l => ({ date: l[0], value: l[1] })); });
     }
+    
     const docRef = db.collection('workspaces').doc('team_data');
-    docRef.set({ payload: cleanDB, updatedAt: new Date().toISOString() })
-    .then(() => { if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud'; })
-    .catch(e => { console.error("Lỗi lưu Firebase:", e); if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!'; toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err'); });
+    docRef.set({ 
+      payload: cleanDB, 
+      updatedAt: new Date().toISOString() 
+    }).then(() => {
+      if (el) el.querySelector('span').textContent = 'Đã lưu lên Cloud';
+    }).catch(e => {
+      console.error("Lỗi lưu Firebase:", e);
+      if (el) el.querySelector('span').textContent = 'Lỗi đồng bộ!';
+      toast('Lỗi lưu dữ liệu. Hãy thử lại!', 'err');
+    });
   },
-  status() {}, saved() {}, serialize() { return ''; }, guide: async () => true, save: async () => {}, draft: () => null
+  
+  status() {}, 
+  saved() {},
+  serialize() { return ''; },
+  guide: async () => true,
+  save: async () => {},
+  draft: () => null
 };
 window.addEventListener('beforeunload', e => { });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); } });
@@ -798,13 +859,113 @@ const DataScreen = {
   title: 'Dữ liệu & sao lưu', icon: 'database', desc: 'Lưu file, sao lưu, khôi phục, làm mới dữ liệu', print: false,
   render(el) {
     const counts = (App.cfg.counts ? App.cfg.counts() : []).map(([k, v]) => `<div class="dl"><div><span>${k}</span><b>${F.money(v)}</b></div></div>`).join('');
-    el.innerHTML = `<div class="grid cols-2">${card('Lưu dữ liệu vào chính file này', `<p class="muted" style="margin-top:0">Dữ liệu đang được tự động lưu Online lên Firebase.</p><div class="row"><button class="btn pri" data-act="saveFile">${ic('save')} Lưu thủ công</button></div>`)}${card('Tình trạng dữ liệu', `${counts}<p class="small muted">Lần lưu gần nhất: <b>${new Date().toLocaleString('vi-VN')}</b></p>`)}</div>`;
+    
+    el.innerHTML = `<div class="grid cols-2">
+      ${card('Lưu dữ liệu vào chính file này', `<p class="muted" style="margin-top:0">Dữ liệu đang được tự động lưu Online lên Firebase.</p><div class="row"><button class="btn pri" data-act="saveFile">${ic('save')} Lưu thủ công</button></div>`)}
+      
+      ${card('Tình trạng dữ liệu', `${counts}<p class="small muted">Lần lưu gần nhất: <b>${new Date().toLocaleString('vi-VN')}</b></p>`)}
+      
+      <div style="grid-column: 1 / -1;">
+        ${card('Lịch sử sao lưu (Tự động cuối ngày)', `
+          <div id="backupList"><div class="empty">Đang tải danh sách sao lưu...</div></div>
+          <div class="row mt">
+            <button class="btn" data-act="refreshBackups">${ic('refresh')} Tải lại danh sách</button>
+          </div>
+        `)}
+      </div>
+    </div>`;
+
+    // Hàm tải danh sách backup
+    const loadBackups = async () => {
+        const listEl = document.getElementById('backupList');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="empty">Đang tải...</div>';
+        
+        try {
+            const snapshot = await db.collection('workspaces').doc('team_data').collection('backups').orderBy('createdAt', 'desc').limit(30).get();
+            if (snapshot.empty) {
+                listEl.innerHTML = '<div class="empty">Chưa có bản sao lưu nào.</div>';
+                return;
+            }
+            
+            let html = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ngày sao lưu</th><th>Thời gian tạo</th><th class="r">Hành động</th></tr></thead><tbody>';
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const dateStr = F.date(doc.id); // doc.id chính là ngày YYYY-MM-DD
+                const timeStr = new Date(data.createdAt).toLocaleString('vi-VN');
+                html += `<tr>
+                    <td><b>${dateStr}</b></td>
+                    <td>${timeStr}</td>
+                    <td class="r"><button class="btn sm pri" data-act="restoreBackup" data-id="${doc.id}">${ic('refresh')} Phục hồi</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            listEl.innerHTML = html;
+        } catch (e) {
+            listEl.innerHTML = `<div class="empty" style="color:#dc2626">Lỗi tải dữ liệu: ${e.message}</div>`;
+        }
+    };
+
+    // Gọi hàm tải
+    loadBackups();
+    
+    // Gắn sự kiện cho nút Tải lại
+    setTimeout(() => {
+        const btn = document.querySelector('[data-act="refreshBackups"]');
+        if (btn) btn.onclick = loadBackups;
+    }, 100);
   }
 };
+
 Object.assign(ACT, {
   backup: () => download(new Blob([JSON.stringify(Object.assign({ _app: App.cfg.id }, DB), null, 1)], { type: 'application/json' }), `Sao luu - ${App.cfg.title} - ${D.today()}.json`),
-  wipe: async () => { if (!(await Modal.confirm('Xóa toàn bộ dữ liệu (giữ lại thông tin công ty)?', { ok: 'Xóa hết', danger: true }))) return; const keep = DB.settings; DB = App.cfg.empty(); DB.settings = keep; DB._meta = {}; App.cfg.migrate && App.cfg.migrate(DB); $('#draftBox').innerHTML = ''; App.changed(); toast('Đã xóa.', 'ok'); },
-  loadSample: async () => { if (!(await Modal.confirm('Thay dữ liệu hiện tại bằng dữ liệu mẫu?', { ok: 'Nạp mẫu', danger: true }))) return; const keep = DB.settings.company; DB = App.cfg.sample(); DB.settings.company = keep; DB._meta = {}; App.changed(); }
+  
+  wipe: async () => { 
+      if (!(await Modal.confirm('Xóa toàn bộ dữ liệu (giữ lại thông tin công ty)?', { ok: 'Xóa hết', danger: true }))) return; 
+      const keep = DB.settings; 
+      DB = App.cfg.empty(); 
+      DB.settings = keep; 
+      DB._meta = {}; 
+      App.cfg.migrate && App.cfg.migrate(DB); 
+      $('#draftBox').innerHTML = ''; 
+      App.changed(); 
+      toast('Đã xóa.', 'ok'); 
+  },
+  
+  loadSample: async () => { 
+      if (!(await Modal.confirm('Thay dữ liệu hiện tại bằng dữ liệu mẫu?', { ok: 'Nạp mẫu', danger: true }))) return; 
+      const keep = DB.settings.company; 
+      DB = App.cfg.sample(); 
+      DB.settings.company = keep; 
+      DB._meta = {}; 
+      App.changed(); 
+  },
+
+  restoreBackup: async (d) => {
+      const dateStr = d.id; // YYYY-MM-DD
+      if (!(await Modal.confirm(`Bạn có chắc chắn muốn phục hồi toàn bộ dữ liệu về trạng thái ngày <b>${F.date(dateStr)}</b>?<br><br><span style="color:#dc2626;font-weight:bold;">Cảnh báo: Dữ liệu hiện tại sẽ bị ghi đè!</span>`, { ok: 'Phục hồi ngay', danger: true, title: 'Xác nhận phục hồi' }))) return;
+      
+      try {
+          const docRef = db.collection('workspaces').doc('team_data').collection('backups').doc(dateStr);
+          const docSnap = await docRef.get();
+          if (docSnap.exists) {
+              const backupData = docSnap.data().payload;
+              // Ghi đè dữ liệu chính
+              await db.collection('workspaces').doc('team_data').set({ payload: backupData, updatedAt: new Date().toISOString() });
+              toast('Đã phục hồi dữ liệu thành công!', 'ok');
+          } else {
+              toast('Không tìm thấy bản sao lưu này.', 'err');
+          }
+      } catch (e) {
+          console.error("Lỗi phục hồi:", e);
+          toast('Lỗi phục hồi dữ liệu: ' + e.message, 'err');
+      }
+  },
+
+  refreshBackups: () => {
+      // Hàm này chỉ để kích hoạt tải lại danh sách thông qua render của DataScreen
+      App.render();
+  }
 });
 function addCSS(t) { const s = document.createElement('style'); s.dataset.runtime = '1'; s.textContent = t; document.head.appendChild(s); }
 function onVal(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('change', () => fn(el.value)); }
