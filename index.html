@@ -1757,6 +1757,8 @@ function assignForm(a, isNew) {
     title: isNew ? 'Giao việc mới' : 'Sửa giao việc', fields, width: 760,
     value: a || { ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'), uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, start: D.today(), deadline: D.add(D.today(), 3), nguoiGiao: '', nguoiNhan: '', phiHop: '' },
     onSave: d => {
+      d.batchId = a ? a.batchId : ''; // Giữ lại batchId nếu có
+
       d.pct = Math.max(0, Math.min(100, Math.round(d.pct || 0)));
       if (d.trangThai === 'Hoàn thành') d.pct = 100;
       const ph = d.phiHop ? d.phiHop.split(',').map(x => x.trim()).filter(Boolean).map(name => { const p = DB.people.find(q => q.ten.toLowerCase() === name.toLowerCase()); return p ? p.id : null; }).filter(Boolean) : [];
@@ -2127,9 +2129,17 @@ Object.assign(ACT, {
       App.changed();
   },
   batchAddTask: d => {
-      // Mở form thêm việc, tự động điền batchId
-      const a = { batchId: d.id, ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'), uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, start: D.today(), deadline: D.add(D.today(), 3) };
-      // Hàm assignForm cần được sửa để nhận batchId
+      // Tạo object rỗng với các giá trị mặc định, mang theo batchId
+      const a = { 
+          batchId: d.id, 
+          ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'), 
+          uuTien: 'Trung bình', 
+          trangThai: 'Mới giao', 
+          pct: 0, 
+          start: D.today(), 
+          deadline: D.add(D.today(), 3) 
+      };
+      // Gọi form thêm mới và truyền object này vào
       assignForm(a, true);
   },
   asmDel: async d => { const a = DB.assignments.find(x => x.id === d.id); if (await Modal.confirm(`Xóa giao việc <b>${esc(a.ten)}</b>?`, { ok: 'Xóa', danger: true })) { DB.assignments = DB.assignments.filter(x => x.id !== d.id); App.changed(); } },
