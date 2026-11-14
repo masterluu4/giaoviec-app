@@ -366,6 +366,9 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
   </div>
   <div class="ai-foot">
     <input type="text" id="ai-input" placeholder="Nhập tin nhắn...">
+    <label class="btn" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:0 10px; border-radius:8px; cursor:pointer; display:flex; align-items:center; margin-bottom:0;" title="Gửi ảnh bảng công việc để AI quét">
+      📎<input type="file" id="ai-img-input" accept="image/*" hidden>
+    </label>
     <button id="ai-mic" style="background:#64748b; padding:0 10px; border-radius:8px; border:none; color:#fff; cursor:pointer; font-size:16px;" title="Nhấn để nói">🎤</button>
     <button id="ai-send">Gửi</button>
   </div>
@@ -2646,7 +2649,114 @@ document.addEventListener('DOMContentLoaded', () => {
           await askAI(question);
       }
   }
+  // HÀM XỬ LÝ ẢNH BẢNG CÔNG VIỆC
+  async function processImage(imageFile) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+          const base64Image = e.target.result;
+          const loadingMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: '⏳ Đang đọc dữ liệu từ ảnh (quá trình này mất khoảng 5-10 giây)...', time: new Date().toISOString() };
+          await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
 
+          const prompt = `Bạn là một trợ lý ảo chuyên nghiệp. Hãy đọc bảng công việc trong bức ảnh này.
+Hãy trích xuất danh sách các công việc. Trả về DUY NHẤT định dạng JSON hợp lệ là một mảng như sau:
+[
+  {"ten": "Nội dung công việc", "nguoi": "Tên người phụ trách", "han": "YYYY-MM-DD"}
+]
+Lưu ý:
+- Cột "Công việc thực hiện" là "ten".
+- Cột "T.nhiệm" (Trách nhiệm) là "nguoi". Nếu có nhiều người, hãy lấy người đầu tiên.
+- Cột "H.thành" (Hạn hoàn thành) là "han". Định dạng ngày trong ảnh thường là DD/MM/YYYY, hãy chuyển thành YYYY-MM-DD (ví dụ: 20/11/2026 thành 2026-11-20).
+- Bỏ qua các dòng tiêu đề, chỉ lấy các dòng có công việc thực tế.`;
+
+          try {
+              const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
+              const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
+                  body: JSON.stringify({ 
+                      model: 'llama-3.2-11b-vision-preview', 
+                      messages: [{ role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: base64Image } } ] }],
+                      temperature: 0.1
+                  })
+              });
+              
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq Vision");
+              
+              let aiText = data.choices[0].message.content;
+              
+              // Lọc JSON
+              const jsonStr = aiText.substring(aiText.indexOf('['), aiText.lastIndexOf(']') + 1);
+              const tasksArray = JSON.parse(jsonStr);
+              
+              if (!Array.isArray(tasksArray) || tasksArray.length === 0) {
+                  throw new Error("Không tìm thấy dữ liệu công việc trong ảnh.");
+              }
+
+              // TỰ ĐỘNG TẠO CÔNG VIỆC
+              let createdCount = 0;
+              for (const item of tasksArray) {
+                  // Map tên nhân sự (Tìm theo từ khóa cuối, VD: "Mr Lưu" -> "Lưu" -> Võ Thành Lưu)
+                  let assigneeId = '';
+                  if (item.nguoi) {
+                      const searchName = item.nguoi.toLowerCase().replace(/mr|mrs|anh|chị|em|\./g, '').trim();
+                      const found = DB.people.find(p => {
+                          const pName = p.ten.toLowerCase();
+                          return pName.includes(searchName) || searchName.includes(pName.split(' ').pop());
+                      });
+                      if (found) assigneeId = found.id;
+                  }
+
+                  // Chuẩn hóa ngày tháng
+                  let deadline = D.add(D.today(), 7); // Mặc định 7 ngày nếu không đọc được
+                  if (item.han && /^\d{4}-\d{2}-\d{2}$/.test(item.han)) {
+                      deadline = item.han;
+                  }
+
+                  const newTask = {
+                      id: uid(), 
+                      ma: 'GV.' + String(DB.assignments.length + 1 + createdCount).padStart(3, '0'),
+                      ten: item.ten || 'Công việc chưa đặt tên',
+                      moTa: 'Tạo tự động bằng AI quét ảnh',
+                      nguoiGiao: userSelect.value, 
+                      nguoiNhan: assigneeId, 
+                      nguoiPhoiHop: [],
+                      start: D.today(), 
+                      deadline: deadline,
+                      uuTien: 'Trung bình', 
+                      trangThai: 'Mới giao', 
+                      pct: 0, 
+                      lyDoTre: '',
+                      dep: '', 
+                      checklist: [], 
+                      comments: [], 
+                      dinhKem: [], 
+                      log: []
+                  };
+                  DB.assignments.push(newTask);
+                  createdCount++;
+              }
+              
+              // Gọi lại hàm App.changed để lưu lên Firebase
+              App.changed(false);
+
+              const successMsg = { 
+                  id: uid(), 
+                  senderId: 'ai', 
+                  sender: 'AI Bot', 
+                  text: `✅ Tuyệt vời! Em đã đọc ảnh và tự động tạo thành công **${createdCount} công việc** vào danh sách Giao việc. Sếp hãy chuyển sang tab "Quản lý Giao việc" để kiểm tra nhé!`, 
+                  time: new Date().toISOString() 
+              };
+              await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(successMsg) }, { merge: true });
+
+          } catch (err) {
+              console.error("Lỗi quét ảnh:", err);
+              const errMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `❌ Lỗi quét ảnh: ${err.message}. Vui lòng thử lại với ảnh rõ nét hơn.`, time: new Date().toISOString() };
+              await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errMsg) }, { merge: true });
+          }
+      };
+      reader.readAsDataURL(imageFile);
+  }
   async function askAI(question) {
       await cleanupOldMessages();
       
@@ -2768,6 +2878,15 @@ Câu hỏi: ${question}`;
       }
   }
   if(chatSend) chatSend.addEventListener('click', sendMessage);
+  const imgInput = document.getElementById('ai-img-input');
+  if (imgInput) {
+      imgInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+              processImage(e.target.files[0]);
+              e.target.value = ''; // Reset input để có thể chọn ảnh tiếp
+          }
+      });
+  }
   if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
   async function checkStuckTasks() {
