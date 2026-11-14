@@ -2592,19 +2592,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const today = D.today(); 
       const tomorrow = D.add(today, 1);
       
-      // 1. Lấy toàn bộ dữ liệu quá hạn / sắp đến hạn
       const allLateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
       const allSoonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
 
-      // 2. Tạo dữ liệu ngữ cảnh chi tiết để gửi cho AI
+      // Tạo dữ liệu ngữ cảnh chi tiết để gửi cho AI
       const contextData = {
           nhan_su: DB.people.map(p => p.ten),
           cong_viec_qua_han: allLateTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline })),
           cong_viec_sap_den_han: allSoonTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline }))
       };
 
-      // 3. Prompt thông minh hơn
-      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDưới đây là dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nDựa vào dữ liệu trên, hãy trả lời câu hỏi sau. Nếu không có thông tin, hãy báo là không tìm thấy:\nCâu hỏi: ${question}`;
+      // Prompt thông minh
+      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDưới đây là dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nDựa vào dữ liệu trên, hãy trả lời câu hỏi sau. Nếu không có thông tin trong dữ liệu, hãy trả lời tự nhiên theo hiểu biết của bạn:\nCâu hỏi: ${question}`;
 
       try {
           const cleanKey = GROQ_API_KEY.trim(); 
@@ -2618,29 +2617,35 @@ document.addEventListener('DOMContentLoaded', () => {
           
           const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
           
-          // 4. LỌC THÔNG MINH: Chỉ đính kèm nút tick nếu câu hỏi có nhắc đến tên ai đó
-          let filteredLate = allLateTasks;
-          let filteredSoon = allSoonTasks;
-          
-          const foundPerson = DB.people.find(p => question.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase())); // Tìm theo tên cuối (VD: "Huy", "Đức")
-          
-          if (foundPerson) {
-              filteredLate = allLateTasks.filter(t => t.nguoiNhan === foundPerson.id);
-              filteredSoon = allSoonTasks.filter(t => t.nguoiNhan === foundPerson.id);
-          }
+          // BỘ LỌC THÔNG MINH: Chỉ hiển thị danh sách nếu hỏi về công việc/quá hạn/tiến độ
+          const workKeywords = ['công việc', 'quá hạn', 'tiến độ', 'trễ', 'deadline', 'hạn chót', 'sắp đến hạn', 'việc', 'task', 'cần làm', 'chưa xong', 'hoàn thành'];
+          const isWorkQuery = workKeywords.some(kw => question.toLowerCase().includes(kw));
 
-          if (filteredLate.length > 0 || filteredSoon.length > 0) {
-              aiReply.isAlert = true;
-              aiReply.alertTasks = [];
-              filteredLate.forEach(t => aiReply.alertTasks.push({ 
-                  id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', 
-                  nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', 
-                  lateDays: -D.diff(t.deadline, today) 
-              }));
-              filteredSoon.forEach(t => aiReply.alertTasks.push({ 
-                  id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', 
-                  nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' 
-              }));
+          if (isWorkQuery) {
+              let filteredLate = allLateTasks;
+              let filteredSoon = allSoonTasks;
+              
+              // Nếu câu hỏi có nhắc đến tên ai đó, chỉ lọc việc của người đó
+              const foundPerson = DB.people.find(p => question.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase())); 
+              
+              if (foundPerson) {
+                  filteredLate = allLateTasks.filter(t => t.nguoiNhan === foundPerson.id);
+                  filteredSoon = allSoonTasks.filter(t => t.nguoiNhan === foundPerson.id);
+              }
+
+              if (filteredLate.length > 0 || filteredSoon.length > 0) {
+                  aiReply.isAlert = true;
+                  aiReply.alertTasks = [];
+                  filteredLate.forEach(t => aiReply.alertTasks.push({ 
+                      id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', 
+                      nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', 
+                      lateDays: -D.diff(t.deadline, today) 
+                  }));
+                  filteredSoon.forEach(t => aiReply.alertTasks.push({ 
+                      id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', 
+                      nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' 
+                  }));
+              }
           }
 
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(aiReply) }, { merge: true });
