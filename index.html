@@ -1010,6 +1010,7 @@ function migrate(db) {
   db.topics.forEach(t => { t.thanhVien = t.thanhVien || []; t.minhChung = t.minhChung || []; t.endMilestoneText = t.endMilestoneText || 'Kết thúc CĐ'; });
   db.topicTasks.forEach(t => { t.log = t.log || []; t.dep = t.dep || ''; t.parentId = t.parentId || ''; t.ketQua = t.ketQua || ''; t.buoi = t.buoi || 'Sáng'; t.isHighlight = !!t.isHighlight; t.milestoneText = t.milestoneText || ''; t.showOnTimeline = !!t.showOnTimeline; });
   db.assignments.forEach(a => { a.checklist = a.checklist || []; a.comments = a.comments || []; a.dinhKem = a.dinhKem || []; a.log = a.log || []; a.nguoiPhoiHop = a.nguoiPhoiHop || []; });
+  db.batches = db.batches || []; // <-- THÊM DÒNG NÀY
 }
 function sampleDB() {
   const db = emptyDB(), T = D.today(), a = n => D.add(T, n);
@@ -1782,13 +1783,76 @@ function renderTaskList(el) {
   const tab = UI.tab.tasks || 'list';
   const all = DB.assignments.map(asmDerived);
   const counts = ASM_ST.reduce((m, s) => (m[s] = all.filter(x => x.trangThai === s).length, m), {});
-  const tabs = [['list', 'Danh sách', 'list'], ['kanban', 'Kanban', 'kanban'], ['calendar', 'Lịch', 'calendar'], ['gantt', 'Gantt', 'trend']];
+  const tabs = [['list', 'Danh sách', 'list'], ['kanban', 'Kanban', 'kanban'], ['calendar', 'Lịch', 'calendar'], ['gantt', 'Gantt', 'trend'], ['batches', 'Đợt công việc', 'folder']];
   el.innerHTML = `<div class="tabs">${tabs.map(([k, l, icn]) => `<button class="${tab === k ? 'on' : ''}" data-act="asmTab" data-v="${k}">${ic(icn)} ${l}</button>`).join('')}</div><div id="asmBody"></div>`;
   const body = $('#asmBody');
   if (tab === 'list') renderAsmList(body, all, counts);
   else if (tab === 'kanban') renderKanban(body, all);
   else if (tab === 'calendar') renderCalendar(body, all);
   else if (tab === 'gantt') renderAsmGantt(body, all);
+  else if (tab === 'batches') renderBatchList(body);
+}
+function renderBatchList(body) {
+    const batches = DB.batches || [];
+    const rows = batches.map(b => {
+        const bTasks = DB.assignments.filter(a => a.batchId === b.id);
+        const total = bTasks.length;
+        const done = bTasks.filter(a => a.trangThai === 'Hoàn thành').length;
+        const prog = total ? Math.round((done / total) * 100) : 0;
+        return { ...b, total, done, prog };
+    }).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+
+    body.innerHTML = `<div id="batchTable"></div>`;
+    table($('#batchTable'), { id: 'batchTbl', rows, ph: 'Tìm tên đợt...', 
+      onRow: b => { UI.sub = 'batch_detail'; UI.batchId = b.id; App.render(); },
+      columns: [
+        { key: 'name', label: 'Tên đợt / Cuộc họp', render: b => `<b>${esc(b.name)}</b>` },
+        { key: 'createdAt', label: 'Ngày tạo', fmt: 'date', render: b => F.date(b.createdAt) },
+        { key: 'total', label: 'Tổng số việc', fmt: 'num', dec: 0 },
+        { key: 'done', label: 'Đã xong', fmt: 'num', dec: 0 },
+        { key: 'prog', label: 'Tiến độ', render: b => b.total ? pbar(b.prog) : '<span class="muted">—</span>' }
+      ],
+      actions: b => `<button class="ibtn" data-act="batchView" data-id="${b.id}" data-tip="Xem chi tiết">${ic('eye')}</button><button class="ibtn del" data-act="batchDel" data-id="${b.id}" data-tip="Xóa đợt">${ic('trash')}</button>`,
+      empty: 'Chưa có đợt công việc nào. Hãy gửi ảnh vào Chat để AI tự tạo, hoặc bấm "Thêm đợt" thủ công.'
+    });
+}
+
+function renderBatchDetail(body) {
+    const b = DB.batches.find(x => x.id === UI.batchId);
+    if (!b) { UI.sub = null; UI.batchId = null; return renderTaskList(body); }
+    
+    // Lấy riêng các task thuộc đợt này
+    const batchTasks = DB.assignments.filter(a => a.batchId === b.id).map(asmDerived);
+    
+    // Tái sử dụng logic đếm
+    const counts = ASM_ST.reduce((m, s) => (m[s] = batchTasks.filter(x => x.trangThai === s).length, m), {});
+    
+    // Lưu đè mảng tạm để các hàm renderList bên dưới dùng đúng dữ liệu của Batch
+    const originalAssignments = DB.assignments;
+    DB.assignments = batchTasks; 
+    
+    // Các tab con bên trong Batch
+    const subTab = UI.tab.batchDetail || 'list';
+    
+    body.innerHTML = `
+    <div class="row mb" style="background:#fff; padding:12px 16px; border-radius:12px; border:1px solid #e6e9f0;">
+      <button class="btn" data-act="batchBack">${ic('back')} DS Đợt</button>
+      <div class="grow" style="padding-left:10px">
+        <b style="font-size:16px; color:#1e3a8a">${esc(b.name)}</b>
+        <div class="muted small">Tạo ngày: ${F.date(b.createdAt)}</div>
+      </div>
+      <div class="seg">${[['list', 'Danh sách', 'list'], ['kanban', 'Kanban', 'kanban'], ['gantt', 'Gantt', 'trend']].map(([k, l, icn]) => `<button class="${subTab === k ? 'on' : ''}" data-act="batchTab" data-v="${k}">${ic(icn)} ${l}</button>`).join('')}</div>
+      <button class="btn pri" data-act="batchAddTask" data-id="${b.id}">${ic('plus')} Thêm việc</button>
+    </div>
+    <div id="batchTaskContent"></div>`;
+    
+    const contentEl = $('#batchTaskContent');
+    if (subTab === 'list') renderAsmList(contentEl, batchTasks, counts);
+    else if (subTab === 'kanban') renderKanban(contentEl, batchTasks);
+    else if (subTab === 'gantt') renderAsmGantt(contentEl, batchTasks);
+    
+    // Khôi phục lại mảng gốc để không ảnh hưởng đến hệ thống
+    DB.assignments = originalAssignments;
 }
 function renderAsmList(body, all, counts) {
   const f = UI.asmFilter;
@@ -2053,6 +2117,21 @@ Object.assign(ACT, {
   asmTab: d => { UI.tab.tasks = d.v; App.render(); },
   taskTab: d => { UI.tab.taskDetail = d.v; App.render(); },
   asmFilter: d => { UI.asmFilter.state = d.v; App.render(); },
+  batchView: d => { UI.sub = 'batch_detail'; UI.batchId = d.id; UI.tab.batchDetail = 'list'; App.render(); },
+  batchBack: () => { UI.sub = null; UI.batchId = null; App.render(); },
+  batchTab: d => { UI.tab.batchDetail = d.v; App.render(); },
+  batchDel: async d => { 
+      if (!(await Modal.confirm('Xóa đợt này? (Các công việc bên trong sẽ KHÔNG bị xóa, chỉ mất nhãn đợt)', { ok: 'Xóa đợt', danger: true }))) return;
+      DB.batches = DB.batches.filter(x => x.id !== d.id);
+      DB.assignments.forEach(a => { if (a.batchId === d.id) a.batchId = ''; });
+      App.changed();
+  },
+  batchAddTask: d => {
+      // Mở form thêm việc, tự động điền batchId
+      const a = { batchId: d.id, ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'), uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, start: D.today(), deadline: D.add(D.today(), 3) };
+      // Hàm assignForm cần được sửa để nhận batchId
+      assignForm(a, true);
+  },
   asmDel: async d => { const a = DB.assignments.find(x => x.id === d.id); if (await Modal.confirm(`Xóa giao việc <b>${esc(a.ten)}</b>?`, { ok: 'Xóa', danger: true })) { DB.assignments = DB.assignments.filter(x => x.id !== d.id); App.changed(); } },
   asmAccept: d => { const a = DB.assignments.find(x => x.id === d.id); if (a) { a.trangThai = 'Đang làm'; App.changed(); toast('Đã nhận việc', 'ok'); } },
   asmSubmit: d => { const a = DB.assignments.find(x => x.id === d.id); if (a) { a.trangThai = 'Chờ duyệt'; if (a.pct < 100) a.pct = 100; App.changed(); toast('Đã gửi duyệt', 'ok'); } },
@@ -2693,7 +2772,13 @@ Lưu ý:
                   throw new Error("Không tìm thấy dữ liệu công việc trong ảnh.");
               }
 
-              // TỰ ĐỘNG TẠO CÔNG VIỆC
+              // 1. TỰ ĐỘNG TẠO ĐỢT (BATCH) TRƯỚC
+              const newBatchId = uid();
+              const batchName = `Biên bản họp ngày ${F.date(D.today())}`;
+              if (!DB.batches) DB.batches = []; // Đề phòng mảng chưa được khởi tạo
+              DB.batches.push({ id: newBatchId, name: batchName, createdAt: D.today() });
+
+              // 2. TỰ ĐỘNG TẠO CÔNG VIỆC VÀ GẮN VÀO ĐỢT
               let createdCount = 0;
               for (const item of tasksArray) {
                   // Map tên nhân sự (Tìm theo từ khóa cuối, VD: "Mr Lưu" -> "Lưu" -> Võ Thành Lưu)
@@ -2731,7 +2816,8 @@ Lưu ý:
                       checklist: [], 
                       comments: [], 
                       dinhKem: [], 
-                      log: []
+                      log: [],
+                      batchId: newBatchId // <-- ĐIỂM MẤU CHỐT: Gắn ID đợt vào công việc
                   };
                   DB.assignments.push(newTask);
                   createdCount++;
@@ -2744,7 +2830,7 @@ Lưu ý:
                   id: uid(), 
                   senderId: 'ai', 
                   sender: 'AI Bot', 
-                  text: `✅ Tuyệt vời! Em đã đọc ảnh và tự động tạo thành công **${createdCount} công việc** vào danh sách Giao việc. Sếp hãy chuyển sang tab "Quản lý Giao việc" để kiểm tra nhé!`, 
+                  text: `✅ Tuyệt vời! Em đã đọc ảnh và tạo thành công đợt **"${batchName}"** với **${createdCount} công việc**. Sếp vào tab "Quản lý Giao việc" -> "Đợt công việc" để xem chi tiết nhé!`, 
                   time: new Date().toISOString() 
               };
               await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(successMsg) }, { merge: true });
