@@ -4,6 +4,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chuyên đề Cải tiến · Chuyên đề &amp; Giao việc</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%230d9488%22%2F%3E%3Cpath%20d%3D%22M9%2010h14M9%2016h14M9%2022h9%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E">
+<!-- PWA MANIFEST -->
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Chuy%C3%AAn%20%C4%91%E1%BB%81%20%26%20Giao%20vi%E1%BB%87c%22%2C%22short_name%22%3A%22GiaoViec%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d9488%22%2C%22theme_color%22%3A%22%230d9488%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520viewBox%253D%25220%25200%252032%252032%2522%253E%253Crect%2520width%253D%252232%2522%2520height%253D%252232%2522%2520rx%253D%25228%2522%2520fill%253D%2522%25230d9488%2522%252F%253E%253Cpath%2520d%253D%2522M9%252010h14M9%252016h14M9%252022h9%2522%2520stroke%253D%2522%2523fff%2522%2520stroke-width%253D%25223%2522%2520stroke-linecap%253D%2522round%2522%252F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<meta name="theme-color" content="#0d9488">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
@@ -12,6 +15,7 @@
 body{font-family:'Lexend','Segoe UI',Roboto,Arial,sans-serif;font-size:14px;color:#1f2937;background:#f3f5f9;-webkit-font-smoothing:antialiased;line-height:1.45}
 button,input,select,textarea{font:inherit;color:inherit}a{color:var(--p-d)}svg{flex:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes critical-pulse { 0% { box-shadow: 0 0 5px rgba(239,68,68,.4); } 50% { box-shadow: 0 0 15px rgba(239,68,68,.8); border-color: #ef4444; } 100% { box-shadow: 0 0 5px rgba(239,68,68,.4); } }
 .shell{display:flex;min-height:100vh}.sidebar{width:250px;flex:none;background:linear-gradient(180deg,var(--ink),var(--ink2));color:#e5e7eb;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}
 .brand{display:flex;gap:12px;align-items:center;padding:20px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
 .brand .logo{width:42px;height:42px;border-radius:12px;background:var(--p);display:grid;place-items:center;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.3);flex:none}
@@ -181,6 +185,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .kb-card .meta .late{color:#dc2626;font-weight:700}
 .kb-card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:6px}
 .kb-col.drop{background:var(--p-50);box-shadow:inset 0 0 0 2px var(--p)}
+.kb-card.critical-card { border: 2px solid #ef4444; animation: critical-pulse 2s infinite; }
 .cal{background:#fff;border-radius:14px;border:1px solid #e6e9f0;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.04)}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);background:#f8fafc;border-bottom:1px solid #e3e7ef}
 .cal-head div{padding:12px;text-align:center;font-weight:700;font-size:12px;color:#475467;text-transform:uppercase;letter-spacing:.04em}
@@ -1104,9 +1109,10 @@ function asmDerived(a) {
   const today = D.today();
   const late = a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today;
   const daysLeft = a.deadline ? D.diff(a.deadline, today) : 0;
+  const critical = late && (-daysLeft) >= 3;
   const ckDone = a.checklist.filter(c => c.done).length;
   const ckTotal = a.checklist.length;
-  return { ...a, late, daysLeft, ckDone, ckTotal };
+  return { ...a, late, daysLeft, critical, ckDone, ckTotal };
 }
 function assignmentsFiltered() {
   const f = UI.asmFilter || {};
@@ -1728,7 +1734,14 @@ function assignForm(a, isNew) {
     { key: 'ten', label: 'Tên công việc', required: true, full: true },
     { key: 'moTa', label: 'Mô tả / yêu cầu', type: 'textarea', rows: 3, full: true },
     { key: 'nguoiGiao', label: 'Người giao việc', type: 'select', blank: '(Chưa chọn)', options: DB.people.map(p => ({ value: p.id, label: p.ten })) },
-    { key: 'nguoiNhan', label: 'Người nhận việc', type: 'select', blank: '(Chưa chọn)', options: DB.people.map(p => ({ value: p.id, label: p.ten })) },
+    { key: 'nguoiNhan', label: 'Người nhận việc', type: 'select', blank: '(Chưa chọn)', options: DB.people.map(p => {
+        const pAsms = DB.assignments.filter(a => a.nguoiNhan === p.id && a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy');
+        const late = pAsms.filter(a => a.deadline < D.today()).length;
+        let label = p.ten + ` (Đang làm: ${pAsms.length}`;
+        if (late > 0) label += ` | Trễ: ${late}`;
+        label += `)`;
+        return { value: p.id, label };
+    }) },
     { key: 'start', label: 'Ngày bắt đầu', type: 'date' },
     { key: 'deadline', label: 'Hạn hoàn thành', type: 'date', required: true },
     { key: 'trangThai', label: 'Trạng thái', type: 'select', options: ASM_ST },
@@ -1822,7 +1835,10 @@ function renderKanban(body, all) {
       <h4><span class="dot" style="background:${ASM_C[st]}"></span>${esc(st)}<span class="n">${items.length}</span></h4>
       ${items.map(a => {
         const pn = personOf(a.nguoiNhan);
-        return `<div class="kb-card" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '${a.id}')" data-id="${a.id}" style="border-left-color:${ASM_C[a.trangThai]}">
+        const isCritical = a.critical;
+        const cardClass = isCritical ? 'kb-card critical-card' : 'kb-card';
+        const cardStyle = isCritical ? '' : `border-left-color:${ASM_C[a.trangThai]}`;
+        return `<div class="${cardClass}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', '${a.id}')" data-id="${a.id}" style="${cardStyle}">
           <div class="t">${esc(a.ten)}</div>
           <div class="meta">
             <span>${F.date(a.deadline)}</span>
@@ -2337,6 +2353,16 @@ function checkOverdueAlerts() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // PWA SERVICE WORKER
+  if ('serviceWorker' in navigator) {
+      const swCode = `
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).then(reg => console.log('SW registered')).catch(err => console.log('SW reg failed', err));
+  }
+
   const loginScreen = document.getElementById('loginScreen');
   const loginBtn = document.getElementById('loginBtn');
   const loginPassword = document.getElementById('loginPassword');
@@ -2350,7 +2376,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* === TRỢ LÝ AI GROQ & TEAM CHAT === */
-  const GROQ_API_KEY = "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"; 
+  const GROQ_API_KEY = "DÁN_API_KEY_GROQ_CỦA_BẠN_VÀO_ĐÂY"; 
   
   const chatBtn = document.getElementById('ai-chat-btn');
   const chatWindow = document.getElementById('ai-chat-window');
@@ -2442,7 +2468,10 @@ document.addEventListener('DOMContentLoaded', () => {
                       let lateHtml = '', soonHtml = '';
                       msg.alertTasks.forEach(t => {
                           const btn = `<button class="btn-complete-task" data-act="completeTaskFromChat" data-id="${t.id}" title="Click để hoàn thành">✓</button>`;
-                          const timeInfo = t.type === 'late' ? `<span style="color:#dc2626;font-weight:bold;margin-left:6px;">(Trễ ${t.lateDays} ngày)</span>` : `<span style="color:#d97706;font-weight:bold;margin-left:6px;">(Còn 1 ngày)</span>`;
+                          const isCritical = t.type === 'late' && t.lateDays >= 3;
+                          const timeInfo = t.type === 'late' ? 
+                              `<span style="color:${isCritical ? '#991b1b' : '#dc2626'};font-weight:bold;margin-left:6px; background:${isCritical ? '#fee2e2' : 'transparent'}; padding: 2px 4px; border-radius: 4px;">(Trễ ${t.lateDays} ngày${isCritical ? ' - Cần xử lý ngay!' : ''})</span>` : 
+                              `<span style="color:#d97706;font-weight:bold;margin-left:6px;">(Còn 1 ngày)</span>`;
                           
                           const line = `<div style="margin-bottom:6px; display:flex; align-items:flex-start; justify-content:space-between; gap: 8px;"> 
                               <span style="flex:1; line-height: 1.4;">- ${esc(t.ten)} <br><span style="font-size:11px;color:#64748b;">NV: <b>${esc(t.nguoi)}</b> - Hạn: ${F.date(t.deadline)}</span>${timeInfo}</span> 
@@ -2723,6 +2752,44 @@ Câu hỏi: ${question}`;
   if(chatSend) chatSend.addEventListener('click', sendMessage);
   if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
+  async function checkStuckTasks() {
+      if (!DB || !DB.assignments) return;
+      const now = new Date();
+      const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+      const todayStr = vnTime.toISOString().slice(0, 10);
+      const today = D.today();
+
+      for (const a of DB.assignments) {
+          if (a.trangThai !== 'Đang làm') continue;
+          
+          let lastDate = a.start || today;
+          if (a.log && a.log.length > 0) {
+              const lastLog = a.log[a.log.length - 1];
+              if (Array.isArray(lastLog)) lastDate = lastLog[0];
+              else if (lastLog.date) lastDate = lastLog.date;
+          }
+          
+          const daysStuck = D.diff(today, lastDate);
+          if (daysStuck >= 3) {
+              const storageKey = `stuck_${a.id}_${todayStr}`;
+              if (localStorage.getItem(storageKey)) continue;
+              
+              const person = personOf(a.nguoiNhan);
+              const personName = person ? person.ten : 'ai đó';
+              
+              const alertMsg = {
+                  id: uid(),
+                  senderId: 'ai',
+                  sender: 'AI Bot',
+                  text: `⚠️ Nhắc nhở: @${personName}, công việc "${a.ten}" đã ${daysStuck} ngày không thấy cập nhật tiến độ. Bạn có đang gặp khó khăn gì không? Cần em hỗ trợ gì không?`,
+                  time: new Date().toISOString()
+              };
+              await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(alertMsg) }, { merge: true });
+              localStorage.setItem(storageKey, '1');
+          }
+      }
+  }
+
   async function checkDailyAlerts() {
       const now = new Date();
       const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
@@ -2764,6 +2831,9 @@ Câu hỏi: ${question}`;
 
   setTimeout(checkDailyAlerts, 5000); 
   setInterval(checkDailyAlerts, 30 * 60 * 1000); 
+
+  setTimeout(checkStuckTasks, 10000);
+  setInterval(checkStuckTasks, 2 * 60 * 60 * 1000); // 2 giờ một lần
 
   async function checkPassword() {
       const enteredPass = loginPassword.value;
