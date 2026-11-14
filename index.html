@@ -300,6 +300,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .btn-complete-task:disabled { background: #cbd5e1; cursor: not-allowed; }
 #btn-delete-selected { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); display: none; background: #dc2626; color: #fff; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(220,38,38,.4); z-index: 100; white-space: nowrap; }
 #btn-delete-selected.show { display: block; animation: pop .2s; }
+#ai-mic.recording { background: #dc2626 !important; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 </style>
 
 <!-- FIREBASE SDK & CONFIG -->
@@ -358,7 +360,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
     <!-- Tin nhắn sẽ được load từ Firebase vào đây -->
   </div>
   <div class="ai-foot">
-    <input type="text" id="ai-input" placeholder="Nhập tin nhắn... (Gõ @AI để hỏi)">
+    <input type="text" id="ai-input" placeholder="Nhập tin nhắn...">
+    <button id="ai-mic" style="background:#64748b; padding:0 10px; border-radius:8px; border:none; color:#fff; cursor:pointer; font-size:16px;" title="Nhấn để nói">🎤</button>
     <button id="ai-send">Gửi</button>
   </div>
 </div>
@@ -2356,6 +2359,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatInput = document.getElementById('ai-input');
   const chatBody = document.getElementById('ai-body');
   const userSelect = document.getElementById('chat-user-select');
+  const micBtn = document.getElementById('ai-mic');
+  let recognition = null;
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'vi-VN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.textContent = '🔴'; };
+      recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.textContent = '🎤'; };
+      recognition.onerror = (e) => { toast('Lỗi micro: ' + e.error, 'err'); };
+      
+      recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          chatInput.value += transcript;
+          // Tự động gửi luôn nếu có chữ @AI
+          if (chatInput.value.toLowerCase().includes('@ai')) {
+              setTimeout(() => sendMessage(), 500);
+          }
+      };
+
+      if(micBtn) micBtn.addEventListener('click', () => {
+          if (micBtn.classList.contains('recording')) recognition.stop();
+          else recognition.start();
+      });
+  } else {
+      if(micBtn) micBtn.style.display = 'none'; // Ẩn nếu trình duyệt không hỗ trợ
+  }
   const selectAllBtn = document.getElementById('chat-select-all');
 
   function renderUserSelect() {
@@ -2595,15 +2627,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const allLateTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline < today);
       const allSoonTasks = DB.assignments.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === tomorrow);
 
-      // Tạo dữ liệu ngữ cảnh chi tiết để gửi cho AI
       const contextData = {
           nhan_su: DB.people.map(p => p.ten),
           cong_viec_qua_han: allLateTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline })),
           cong_viec_sap_den_han: allSoonTasks.map(a => ({ ten: a.ten, nguoi: personOf(a.nguoiNhan)?.ten || 'Chưa giao', han: a.deadline }))
       };
 
-      // Prompt thông minh
-      const prompt = `Bạn là một thư ký dễ thương, thông minh và tận tâm của đội nhóm. Hãy trả lời câu hỏi một cách ngắn gọn, vui vẻ, lịch sự, thỉnh thoảng dùng emoji (như 😊, ✨, 🌸). Xưng hô là "em" và gọi người dùng là "sếp" hoặc "anh/chị".\nDưới đây là dữ liệu công ty (JSON):\n${JSON.stringify(contextData)}\n\nDựa vào dữ liệu trên, hãy trả lời câu hỏi sau. Nếu không có thông tin trong dữ liệu, hãy trả lời tự nhiên theo hiểu biết của bạn:\nCâu hỏi: ${question}`;
+      // PROMPT NÂNG CẤP: Yêu cầu AI trả về JSON nếu là lệnh giao việc
+      const prompt = `Bạn là trợ lý quản lý dự án. Hôm nay là ${today}.
+Nhiệm vụ 1: Nếu người dùng yêu cầu GIAO VIỆC, hãy trích xuất thông tin và CHỈ TRẢ VỀ chuỗi JSON hợp lệ theo mẫu sau (Không kèm text giải thích):
+{"action": "create_task", "ten": "Tên công việc", "nguoiNhan": "Tên người nhận (nếu có)", "deadline": "YYYY-MM-DD (nếu có, nếu không có thì để trống)"}
+Nhiệm vụ 2: Nếu là câu hỏi bình thường, hãy trả lời tự nhiên, ngắn gọn, thân thiện như một thư ký.
+Dữ liệu công ty: ${JSON.stringify(contextData)}
+Câu hỏi: ${question}`;
 
       try {
           const cleanKey = GROQ_API_KEY.trim(); 
@@ -2615,36 +2651,60 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối Groq");
           
-          const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: data.choices[0].message.content, time: new Date().toISOString() };
+          let aiText = data.choices[0].message.content;
           
-          // BỘ LỌC THÔNG MINH: Chỉ hiển thị danh sách nếu hỏi về công việc/quá hạn/tiến độ
+          // KIỂM TRA XEM AI CÓ TRẢ VỀ LỆNH GIAO VIỆC KHÔNG (Dạng JSON)
+          if (aiText.includes('"action": "create_task"')) {
+              try {
+                  // Trích xuất JSON từ câu trả lời của AI (đề phòng AI trả về kèm markdown)
+                  const jsonStr = aiText.substring(aiText.indexOf('{'), aiText.lastIndexOf('}') + 1);
+                  const taskData = JSON.parse(jsonStr);
+                  
+                  // Tìm người nhận theo tên
+                  let assigneeId = '';
+                  if (taskData.nguoiNhan) {
+                      const found = DB.people.find(p => p.ten.toLowerCase().includes(taskData.nguoiNhan.toLowerCase()) || taskData.nguoiNhan.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase()));
+                      if (found) assigneeId = found.id;
+                  }
+                  
+                  // Tạo công việc mới
+                  const newTask = {
+                      id: uid(), ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'),
+                      ten: taskData.ten || 'Công việc chưa đặt tên',
+                      moTa: 'Tạo tự động bởi AI Chat',
+                      nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
+                      start: today, deadline: taskData.deadline || D.add(today, 3),
+                      uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, lyDoTre: '',
+                      dep: '', checklist: [], comments: [], dinhKem: [], log: []
+                  };
+                  DB.assignments.push(newTask);
+                  App.changed(false);
+                  
+                  // Báo cáo lại
+                  aiText = `✅ Em đã tự động thêm công việc **"${newTask.ten}"** vào hệ thống!\n- Người nhận: ${assigneeId ? personOf(assigneeId).ten : 'Chưa giao'}\n- Hạn chót: ${F.date(newTask.deadline)}`;
+              } catch (err) {
+                  aiText = "Em nhận diện được lệnh giao việc nhưng chưa trích xuất được thông tin. Sếp vui lòng thử lại với cú pháp rõ ràng hơn.";
+              }
+          }
+
+          const aiReply = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: aiText, time: new Date().toISOString() };
+          
+          // Bộ lọc đính kèm danh sách quá hạn như cũ
           const workKeywords = ['công việc', 'quá hạn', 'tiến độ', 'trễ', 'deadline', 'hạn chót', 'sắp đến hạn', 'việc', 'task', 'cần làm', 'chưa xong', 'hoàn thành'];
           const isWorkQuery = workKeywords.some(kw => question.toLowerCase().includes(kw));
 
           if (isWorkQuery) {
-              let filteredLate = allLateTasks;
-              let filteredSoon = allSoonTasks;
-              
-              // Nếu câu hỏi có nhắc đến tên ai đó, chỉ lọc việc của người đó
+              let filteredLate = allLateTasks, filteredSoon = allSoonTasks;
               const foundPerson = DB.people.find(p => question.toLowerCase().includes(p.ten.split(' ').pop().toLowerCase())); 
-              
               if (foundPerson) {
                   filteredLate = allLateTasks.filter(t => t.nguoiNhan === foundPerson.id);
                   filteredSoon = allSoonTasks.filter(t => t.nguoiNhan === foundPerson.id);
               }
-
               if (filteredLate.length > 0 || filteredSoon.length > 0) {
                   aiReply.isAlert = true;
                   aiReply.alertTasks = [];
-                  filteredLate.forEach(t => aiReply.alertTasks.push({ 
-                      id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', 
-                      nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', 
-                      lateDays: -D.diff(t.deadline, today) 
-                  }));
-                  filteredSoon.forEach(t => aiReply.alertTasks.push({ 
-                      id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', 
-                      nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' 
-                  }));
+                  filteredLate.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'late', nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao', lateDays: -D.diff(t.deadline, today) }));
+                  filteredSoon.forEach(t => aiReply.alertTasks.push({ id: t.id, ten: t.ten, deadline: t.deadline, type: 'soon', nguoi: personOf(t.nguoiNhan)?.ten || 'Chưa giao' }));
               }
           }
 
@@ -2655,7 +2715,6 @@ document.addEventListener('DOMContentLoaded', () => {
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errorMsg) }, { merge: true });
       }
   }
-
   if(chatSend) chatSend.addEventListener('click', sendMessage);
   if(chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
