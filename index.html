@@ -2198,9 +2198,9 @@ Object.assign(ACT, {
   batchBack: () => { UI.sub = null; UI.batchId = null; App.render(); },
   batchTab: d => { UI.tab.batchDetail = d.v; App.render(); },
   batchDel: async d => { 
-      if (!(await Modal.confirm('Xóa đợt này? (Các công việc bên trong sẽ KHÔNG bị xóa, chỉ mất nhãn đợt)', { ok: 'Xóa đợt', danger: true }))) return;
+      if (!(await Modal.confirm('CẢNH BÁO: Xóa đợt này sẽ <b>XÓA TOÀN BỘ</b> công việc bên trong đợt đó. Bạn có chắc chắn không?', { ok: 'Xóa đợt & Công việc', danger: true }))) return;
       DB.batches = DB.batches.filter(x => x.id !== d.id);
-      DB.assignments.forEach(a => { if (a.batchId === d.id) a.batchId = ''; });
+      DB.assignments = DB.assignments.filter(a => a.batchId !== d.id); // Xóa sạch công việc thuộc đợt
       App.changed();
   },
   batchEdit: d => {
