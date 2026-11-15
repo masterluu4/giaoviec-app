@@ -2865,6 +2865,7 @@ QUY TẮC BẮT BUỘC:
           console.error("Lỗi Parse JSON:", parseError, "Chuỗi gốc:", aiText);
           throw new Error("AI trả về dữ liệu bị lỗi (JSON không hợp lệ). Vui lòng thử lại hoặc chia nhỏ ảnh.");
       }
+  }
 
   // Hàm xử lý NHIỀU ảnh cùng lúc
   async function processMultipleImages(files) {
