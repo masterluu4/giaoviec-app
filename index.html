@@ -1637,19 +1637,20 @@ function renderTopicGantt(el) {
       </div>
       <div class="gt-right-sticky">
         <table class="gt-table-right">
-          <thead><tr style="height:${HEAD_H}px"><th>Kết quả thực hiện</th></tr></thead>
+          <thead><tr style="height:${HEAD_H}px"><th>Tiến độ</th></tr></thead>
           <tbody>
-            ${svgRows.map(r => {
-              if (r.isTitleRow) return `<tr style="height:${ROW_H}px"><td style="background:#1e3a8a"></td></tr>`;
-              if (r.type === 'summary') return `<tr style="height:${ROW_H}px;"><td style="background:#e2e8f0"></td></tr>`;
-              let resHtml = '';
-              if (r.ketQua) {
-                let cls = 'gt-res-green';
-                if (r.ketQua.toLowerCase().includes('không đạt') || r.ketQua.toLowerCase().includes('lỗi')) cls = 'gt-res-red';
-                else if (r.ketQua.toLowerCase().includes('đang') || r.ketQua.toLowerCase().includes('chờ')) cls = 'gt-res-yellow';
-                resHtml = `<span class="${cls}">${esc(r.ketQua)}</span>`;
-              }
-              return `<tr style="height:${ROW_H}px;"><td data-act="editKetQua" data-id="${r.data ? r.data.id : ''}" style="cursor:pointer;" title="Click để nhập kết quả">${resHtml || '<span class="muted" style="font-size:11px">...</span>'}</td></tr>`;
+            ${vt.map((r, i) => {
+              const txt = r.trangThai || '';
+              let colorStyle = 'color:#2563eb; font-weight:600;'; // Mặc định màu xanh dương
+              if (txt.includes('Hoàn thành')) colorStyle = 'color:#059669; font-weight:bold;'; // Xanh lá
+              else if (txt.includes('Theo dõi')) colorStyle = 'color:#d97706; font-weight:bold;'; // Vàng cam
+              else if (txt.includes('Mở')) colorStyle = 'color:#dc2626; font-weight:bold;'; // Đỏ
+              
+              return `<tr style="height:${built.heights[i]}px;">
+                <td data-act="editTienDoGantt" data-id="${r.id}" style="cursor:pointer; ${colorStyle}" title="Click để sửa tiến độ">
+                  ${esc(txt)}
+                </td>
+              </tr>`;
             }).join('')}
           </tbody>
         </table>
@@ -2146,6 +2147,17 @@ Object.assign(ACT, {
   asmEdit: d => assignForm(DB.assignments.find(x => x.id === d.id), false),
   asmView: d => { UI.sub = 'detail'; UI.asmId = d.id; UI.tab.taskDetail = 'info'; App.render(); },
   asmBack: () => { UI.sub = UI.batchId ? 'batch_detail' : null; UI.asmId = null; App.render(); },
+  editTienDoGantt: (d) => {
+      const a = DB.assignments.find(x => x.id === d.id);
+      if (!a) return;
+      const val = prompt('Nhập tiến độ / trạng thái (VD: Mở, Đang làm, Theo dõi, Hoàn thành):', a.trangThai || '');
+      if (val !== null) {
+          a.trangThai = val.trim();
+          if (a.trangThai === 'Hoàn thành') a.pct = 100;
+          App.changed();
+          toast('Đã cập nhật tiến độ', 'ok');
+      }
+  },
   asmTab: d => { UI.tab.tasks = d.v; App.render(); },
   taskTab: d => { UI.tab.taskDetail = d.v; App.render(); },
   asmFilter: d => { UI.asmFilter.state = d.v; App.render(); },
@@ -2815,7 +2827,8 @@ QUY TẮC BẮT BUỘC:
    Lưu ý: Nếu ô "Vấn đề" bị gộp (1 vấn đề cho nhiều công việc), hãy lặp lại vấn đề đó cho từng dòng.
 2. Cột "T.nhiệm" là trường "nguoi". Nếu có nhiều người, chọn người đầu tiên.
 3. Cột "H.thành" là trường "han". Đổi DD/MM/YYYY thành YYYY-MM-DD.
-4. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
+4. BẮT BUỘC: Thứ tự các object trong mảng JSON phải khớp CHÍNH XÁC với thứ tự các dòng từ trên xuống dưới trong ảnh. Tuyệt đối không được tự ý sắp xếp lại theo tên người hay ngày tháng.
+5. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
 
       const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
