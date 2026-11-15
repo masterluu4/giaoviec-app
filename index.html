@@ -1131,7 +1131,14 @@ function assignmentsFiltered(filterFn) {
     if (f.lateOnly && !a.late) return false;
     if (f.q) { const q = f.q.toLowerCase(); const hay = [a.ma, a.ten, a.moTa, a.lyDoTre, a.nguoiNhan ? (personOf(a.nguoiNhan)?.ten || '') : ''].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
     return true;
-  }).sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
+  }).sort((a, b) => {
+    // 1. Ưu tiên sắp xếp theo STT nếu là công việc được tạo từ ảnh (có trường stt)
+    if (a.stt !== undefined && b.stt !== undefined) {
+        return a.stt - b.stt;
+    }
+    // 2. Nếu không có STT (công việc đơn lẻ), sắp xếp theo Hạn chót
+    return (a.deadline || '').localeCompare(b.deadline || '');
+  });
 }
 
 /* === UI state === */
@@ -2927,6 +2934,7 @@ QUY TẮC BẮT BUỘC:
 
               DB.assignments.push({
                   id: uid(), ma: 'GV.' + String(DB.assignments.length + 1 + createdCount).padStart(3, '0'),
+                  stt: createdCount + 1, // <-- THÊM DÒNG NÀY VÀO
                   ten: item.ten || 'Công việc chưa đặt tên', moTa: 'Tạo tự động bằng AI quét ảnh',
                   nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
                   start: D.today(), deadline: deadline, uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, lyDoTre: '',
