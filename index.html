@@ -1175,11 +1175,21 @@ function ganttSVGFor(rows, o) {
   const W = totalSlots * dw;
   
   const headH = slotsPerDay > 1 ? 78 : 48;
-  const ROW_H = 56; 
-  const H = headH + rows.length * ROW_H;
+  
+  // TÍNH TOÁN CHIỀU CAO ĐỘNG CHO TỪNG DÒNG
+  const heights = rows.map(r => {
+      if (r.isTitleRow) return 56;
+      const text = r.ten || r.data?.ten || '';
+      // Ước lượng: cột rộng 570px, mỗi dòng chứa khoảng 65 ký tự.
+      const lines = Math.max(1, Math.ceil(text.length / 65));
+      // Mỗi dòng text cao 20px, cộng thêm 20px padding. Tối thiểu 56px.
+      return Math.max(56, lines * 20 + 20);
+  });
+  
+  const H = headH + heights.reduce((s, h) => s + h, 0);
   const today = D.today();
   const X = d => D.diff(d, a) * dayW;
-  const rowY = i => headH + i * ROW_H;
+  const rowY = i => headH + heights.slice(0, i).reduce((s, h) => s + h, 0);
   
   let g = `<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
   
@@ -1230,16 +1240,19 @@ function ganttSVGFor(rows, o) {
   }
 
   rows.forEach((r, i) => { 
-    g += `<line x1="0" x2="${W}" y1="${rowY(i) + ROW_H}" y2="${rowY(i) + ROW_H}" stroke="#cbd5e1"/>`; 
-    if (r.isHighlight) g += `<rect x="0" y="${rowY(i)}" width="${W}" height="${ROW_H}" fill="#fff1f2"/>`; 
-    if (r.type === 'summary') g += `<rect x="0" y="${rowY(i)}" width="${W}" height="${ROW_H}" fill="#e2e8f0"/>`;
-    if (r.isTitleRow) g += `<rect x="0" y="${rowY(i)}" width="${W}" height="${ROW_H}" fill="#1e3a8a"/>`;
+    const y = rowY(i); const h = heights[i];
+    g += `<line x1="0" x2="${W}" y1="${y + h}" y2="${y + h}" stroke="#cbd5e1"/>`; 
+    if (r.isHighlight) g += `<rect x="0" y="${y}" width="${W}" height="${h}" fill="#fff1f2"/>`; 
+    if (r.type === 'summary') g += `<rect x="0" y="${y}" width="${W}" height="${h}" fill="#e2e8f0"/>`;
+    if (r.isTitleRow) g += `<rect x="0" y="${y}" width="${W}" height="${h}" fill="#1e3a8a"/>`;
   });
   
   let summaryPoints = [];
 
   rows.forEach((r, i) => {
-    const y = rowY(i); const t = r.data;
+    const y = rowY(i); 
+    const h = heights[i];
+    const t = r.data;
     if (r.isTitleRow) return;
     
     if (r.type === 'summary') {
@@ -1252,9 +1265,9 @@ function ganttSVGFor(rows, o) {
           else cx += dw/2;
           if (cx < minX) minX = cx;
           if (cx > maxX) maxX = cx;
-          summaryPoints.push({ x: cx, y: y + ROW_H / 2, text: pt.text, isStar: pt.isStar });
+          summaryPoints.push({ x: cx, y: y + h / 2, text: pt.text, isStar: pt.isStar });
         });
-        g += `<line x1="${minX}" x2="${maxX}" y1="${y + ROW_H/2}" y2="${y + ROW_H/2}" stroke="#dc2626" stroke-width="4"/>`;
+        g += `<line x1="${minX}" x2="${maxX}" y1="${y + h/2}" y2="${y + h/2}" stroke="#dc2626" stroke-width="4"/>`;
       }
       return;
     }
@@ -1265,11 +1278,11 @@ function ganttSVGFor(rows, o) {
     let w = r.days === 0 ? 0 : Math.max(0, r.days * dayW);
     if (r.buoi === 'Chiều') x1 += dayW / 2; 
     
-    const by = y + (ROW_H - 18) / 2, bh = 18;
+    const by = y + (h - 18) / 2, bh = 18;
     
     if (r.days === 0) {
       const cx = x1 + (r.buoi === 'Chiều' ? dayW / 2 : 0);
-      const cy = y + ROW_H / 2;
+      const cy = y + h / 2;
       g += `<circle cx="${cx}" cy="${cy}" r="5" fill="#facc15" stroke="#ca8a04" stroke-width="1.5"/>`;
       return;
     }
@@ -1317,7 +1330,7 @@ function ganttSVGFor(rows, o) {
   g += `<text x="${tx}" y="12" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">Now</text>`;
   g += `<line x1="${tx}" x2="${tx}" y1="16" y2="${H}" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 4"/>`;
 
-  return { svg: g, W, H, tx };
+  return { svg: g, W, H, tx, heights };
 }
 function ganttRange(vt) {
   const today = D.today(); 
@@ -1959,7 +1972,6 @@ function renderAsmGantt(body, all) {
   const range = ganttRange(vt), slotsPerDay = UI.g.zoom === 'halfday' ? 2 : UI.g.zoom === 'hour' ? 8 : 1;
   const minDw = { day: 40, halfday: 25, hour: 15, week: 12, month: 4 }[UI.g.zoom] || 40;
   const HEAD_H = slotsPerDay > 1 ? 78 : 48;
-  const ROW_H = 56;
   
   const containerW = body.clientWidth || 1200;
   const availableW = containerW - 720 - 160 - 20; 
@@ -1989,7 +2001,7 @@ function renderAsmGantt(body, all) {
           <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Công việc</th><th class="col-nguoi">Người nhận</th></tr></thead>
           <tbody>
             ${vt.map((r, i) => `
-              <tr style="height:${ROW_H}px; cursor:pointer" data-act="asmView" data-id="${r.id}">
+              <tr style="height:${built.heights[i]}px; cursor:pointer" data-act="asmView" data-id="${r.id}">
                 <td class="col-tt">${i + 1}</td>
                 <td class="col-ten">${esc(r.ten)}</td>
                 <td class="col-nguoi">${personOf(r.nguoiNhan) ? esc(personOf(r.nguoiNhan).ten.split(' ').slice(-2).join(' ')) : '—'}</td>
@@ -2004,9 +2016,9 @@ function renderAsmGantt(body, all) {
         <table class="gt-table-right">
           <thead><tr style="height:${HEAD_H}px"><th>Trạng thái</th></tr></thead>
           <tbody>
-            ${vt.map(r => {
+            ${vt.map((r, i) => {
               let resHtml = asmBadge(r.trangThai);
-              return `<tr style="height:${ROW_H}px;"><td>${resHtml}</td></tr>`;
+              return `<tr style="height:${built.heights[i]}px;"><td>${resHtml}</td></tr>`;
             }).join('')}
           </tbody>
         </table>
