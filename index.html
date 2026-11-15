@@ -1132,11 +1132,17 @@ function assignmentsFiltered(filterFn) {
     if (f.q) { const q = f.q.toLowerCase(); const hay = [a.ma, a.ten, a.moTa, a.lyDoTre, a.nguoiNhan ? (personOf(a.nguoiNhan)?.ten || '') : ''].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
     return true;
   }).sort((a, b) => {
-    // 1. Ưu tiên sắp xếp theo STT nếu là công việc được tạo từ ảnh (có trường stt)
+    // 1. Ưu tiên sắp xếp theo STT (đã được AI trích xuất từ ảnh)
     if (a.stt !== undefined && b.stt !== undefined) {
-        return a.stt - b.stt;
+        // Ép kiểu chuỗi '6.1' thành số thực 6.1 để so sánh
+        const numA = parseFloat(String(a.stt).replace(/[^0-9.]/g, '')) || 0;
+        const numB = parseFloat(String(b.stt).replace(/[^0-9.]/g, '')) || 0;
+        
+        if (numA !== numB) return numA - numB;
+        // Nếu STT bằng nhau (VD cùng là 6), thì so sánh chuỗi gốc để phân định 6.1 đứng trước 6.2
+        return String(a.stt).localeCompare(String(b.stt));
     }
-    // 2. Nếu không có STT (công việc đơn lẻ), sắp xếp theo Hạn chót
+    // 2. Nếu là công việc đơn lẻ (không có STT), sắp xếp theo Hạn chót
     return (a.deadline || '').localeCompare(b.deadline || '');
   });
 }
@@ -2827,17 +2833,18 @@ document.addEventListener('DOMContentLoaded', () => {
   async function extractTasksFromAI(base64Image, retries = 3) {
       const prompt = `Bạn là chuyên gia trích xuất dữ liệu từ bảng biểu. Hãy đọc bảng trong ảnh và trả về DUY NHẤT định dạng JSON mảng:
 [
-  {"ten": "Tên công việc", "nguoi": "Tên người nhận", "han": "YYYY-MM-DD"}
+  {"stt": "Số thứ tự", "ten": "Tên công việc", "nguoi": "Tên người nhận", "han": "YYYY-MM-DD"}
 ]
 QUY TẮC BẮT BUỘC:
 1. Cột "Vấn đề" (cột thứ 2) và cột "Công việc thực hiện" (cột thứ 3). BẠN PHẢI GHÉP CẢ 2 CỘT NÀY LẠI thành trường "ten".
    Ví dụ: Vấn đề ghi "Đối với 04 báo cáo..." và Công việc ghi "BJM sẽ theo dõi tình hình...". Thì "ten" phải là: "[Đối với 04 báo cáo...] - [BJM sẽ theo dõi tình hình...]".
    Lưu ý: Nếu ô "Vấn đề" bị gộp (1 vấn đề cho nhiều công việc), hãy lặp lại vấn đề đó cho từng dòng.
-2. Cột "T.nhiệm" là trường "nguoi". Nếu có nhiều người, chọn người đầu tiên.
-3. Cột "H.thành" là trường "han". Đổi DD/MM/YYYY thành YYYY-MM-DD.
-4. BẮT BUỘC: Thứ tự các object trong mảng JSON phải khớp CHÍNH XÁC với thứ tự các dòng từ trên xuống dưới trong ảnh.
-5. LƯU Ý QUAN TRỌNG: Trong nội dung chữ của trường "ten", KHÔNG sử dụng dấu ngoặc kép (") và KHÔNG sử dụng ký tự xuống dòng. Hãy thay thế chúng bằng dấu cách.
-6. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
+2. Trường "stt": Đọc cột "TT" ngoài cùng bên trái. Nếu một ô "TT" bị gộp cho nhiều công việc (VD: ô số 6 có 2 công việc), hãy đánh số thứ tự thành "6.1" và "6.2". Nếu chỉ có 1 công việc, giữ nguyên số "6".
+3. Cột "T.nhiệm" là trường "nguoi". Nếu có nhiều người, chọn người đầu tiên.
+4. Cột "H.thành" là trường "han". Đổi DD/MM/YYYY thành YYYY-MM-DD.
+5. BẮT BUỘC: Thứ tự các object trong mảng JSON phải khớp CHÍNH XÁC với thứ tự các dòng từ trên xuống dưới trong ảnh.
+6. LƯU Ý QUAN TRỌNG: Trong nội dung chữ của trường "ten", KHÔNG sử dụng dấu ngoặc kép (") và KHÔNG sử dụng ký tự xuống dòng. Hãy thay thế chúng bằng dấu cách.
+7. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
 
       try {
           const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
@@ -2934,6 +2941,7 @@ QUY TẮC BẮT BUỘC:
 
               DB.assignments.push({
                   id: uid(), ma: 'GV.' + String(DB.assignments.length + 1 + createdCount).padStart(3, '0'),
+                  stt: item.stt || (createdCount + 1), // <-- THÊM DÒNG NÀY VÀO
                   stt: createdCount + 1, // <-- THÊM DÒNG NÀY VÀO
                   ten: item.ten || 'Công việc chưa đặt tên', moTa: 'Tạo tự động bằng AI quét ảnh',
                   nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
