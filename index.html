@@ -2816,7 +2816,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Hàm gọi AI cho 1 ảnh duy nhất
-  async function extractTasksFromAI(base64Image) {
+  // Hàm gọi AI cho 1 ảnh duy nhất (Có cơ chế Retry & Sửa lỗi JSON)
+  async function extractTasksFromAI(base64Image, retries = 3) {
       const prompt = `Bạn là chuyên gia trích xuất dữ liệu từ bảng biểu. Hãy đọc bảng trong ảnh và trả về DUY NHẤT định dạng JSON mảng:
 [
   {"ten": "Tên công việc", "nguoi": "Tên người nhận", "han": "YYYY-MM-DD"}
@@ -2827,47 +2828,63 @@ QUY TẮC BẮT BUỘC:
    Lưu ý: Nếu ô "Vấn đề" bị gộp (1 vấn đề cho nhiều công việc), hãy lặp lại vấn đề đó cho từng dòng.
 2. Cột "T.nhiệm" là trường "nguoi". Nếu có nhiều người, chọn người đầu tiên.
 3. Cột "H.thành" là trường "han". Đổi DD/MM/YYYY thành YYYY-MM-DD.
-4. BẮT BUỘC: Thứ tự các object trong mảng JSON phải khớp CHÍNH XÁC với thứ tự các dòng từ trên xuống dưới trong ảnh. Tuyệt đối không được tự ý sắp xếp lại theo tên người hay ngày tháng.
-5. LƯU Ý QUAN TRỌNG: Trong nội dung chữ của trường "ten", KHÔNG sử dụng dấu ngoặc kép (") và KHÔNG sử dụng ký tự xuống dòng (\n). Hãy thay thế chúng bằng dấu cách để không làm hỏng cấu trúc JSON.
+4. BẮT BUỘC: Thứ tự các object trong mảng JSON phải khớp CHÍNH XÁC với thứ tự các dòng từ trên xuống dưới trong ảnh.
+5. LƯU Ý QUAN TRỌNG: Trong nội dung chữ của trường "ten", KHÔNG sử dụng dấu ngoặc kép (") và KHÔNG sử dụng ký tự xuống dòng. Hãy thay thế chúng bằng dấu cách.
 6. Tuyệt đối không giải thích, chỉ trả về chuỗi JSON hợp lệ.`;
 
-      const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
-          body: JSON.stringify({ 
-              model: 'qwen/qwen3.8-27b', 
-              messages: [{ role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: base64Image } } ] }],
-              temperature: 0.1,
-              max_tokens: 4096 // <-- Tăng giới hạn cho AI viết thoải mái
-          })
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối AI Vision");
-      
-      let aiText = data.choices[0].message.content;
-      
-      // BỘ LỌC LÀM SẠCH JSON
       try {
-          // 1. Lấy phần nằm giữa [ và ]
-          const startIdx = aiText.indexOf('[');
-          const endIdx = aiText.lastIndexOf(']');
-          if (startIdx === -1 || endIdx === -1) throw new Error("AI không trả về mảng JSON hợp lệ.");
+          const cleanKey = GROQ_API_KEY.replace(/[^\x20-\x7E]/g, '').trim(); 
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
+              body: JSON.stringify({ 
+                  model: 'qwen/qwen3.8-27b', 
+                  messages: [{ role: 'user', content: [ { type: 'text', text: prompt }, { type: 'image_url', image_url: { url: base64Image } } ] }],
+                  temperature: 0.1,
+                  max_tokens: 4096
+              })
+          });
           
-          let jsonStr = aiText.substring(startIdx, endIdx + 1);
+          // Nếu dính lỗi vượt quá giới hạn (Rate limit)
+          if (res.status === 429) {
+              if (retries > 0) {
+                  await new Promise(r => setTimeout(r, 5000)); // Đợi 5s
+                  return extractTasksFromAI(base64Image, retries - 1);
+              } else {
+                  throw new Error("Hệ thống AI đang quá tải (Vượt hạn mức). Vui lòng đợi 1 phút rồi thử lại.");
+              }
+          }
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error?.message || "Lỗi kết nối AI Vision");
           
-          // 2. Xóa bỏ mọi ký tự điều khiển ẩn (xuống dòng, tab) có thể làm hỏng JSON
-          jsonStr = jsonStr.replace(/[\u0000-\u001F]+/g, " "); 
+          let aiText = data.choices[0].message.content;
           
-          return JSON.parse(jsonStr);
-      } catch (parseError) {
-          console.error("Lỗi Parse JSON:", parseError, "Chuỗi gốc:", aiText);
-          throw new Error("AI trả về dữ liệu bị lỗi (JSON không hợp lệ). Vui lòng thử lại hoặc chia nhỏ ảnh.");
+          try {
+              const startIdx = aiText.indexOf('[');
+              const endIdx = aiText.lastIndexOf(']');
+              if (startIdx === -1 || endIdx === -1) throw new Error("Không tìm thấy mảng JSON.");
+              
+              let jsonStr = aiText.substring(startIdx, endIdx + 1);
+              // Làm sạch JSON
+              jsonStr = jsonStr.replace(/[\u0000-\u001F]+/g, " "); 
+              jsonStr = jsonStr.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+              
+              return JSON.parse(jsonStr);
+          } catch (parseError) {
+              if (retries > 0) {
+                  await new Promise(r => setTimeout(r, 2000)); // Đợi 2s
+                  return extractTasksFromAI(base64Image, retries - 1); // Thử lại
+              }
+              throw new Error("AI trả về dữ liệu bị lỗi. Vui lòng thử lại với ảnh rõ nét hơn.");
+          }
+      } catch (err) {
+          throw err;
       }
   }
 
   // Hàm xử lý NHIỀU ảnh cùng lúc
+  // Hàm xử lý NHIỀU ảnh cùng lúc (Có thời gian nghỉ giữa các ảnh)
   async function processMultipleImages(files) {
       const loadingMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `⏳ Đang xử lý ${files.length} ảnh... Vui lòng đợi trong giây lát.`, time: new Date().toISOString() };
       await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(loadingMsg) }, { merge: true });
@@ -2875,24 +2892,25 @@ QUY TẮC BẮT BUỘC:
       let allTasks = [];
       
       try {
-          // Duyệt qua từng ảnh, quét tuần tự để tránh quá tải API
           for (let i = 0; i < files.length; i++) {
               const base64 = await fileToBase64(files[i]);
               const tasks = await extractTasksFromAI(base64);
               if (Array.isArray(tasks)) {
                   allTasks.push(...tasks);
               }
+              // NGHỈ 2 GIÂY TRƯỚC KHI QUÉT ẢNH TIẾP THEO ĐỂ TRÁNH RATE LIMIT
+              if (i < files.length - 1) {
+                  await new Promise(r => setTimeout(r, 2000));
+              }
           }
 
           if (allTasks.length === 0) throw new Error("Không tìm thấy dữ liệu công việc trong các ảnh.");
 
-          // Tạo 1 Đợt (Batch) duy nhất cho tất cả ảnh
           const newBatchId = uid();
           const batchName = `Biên bản họp ngày ${F.date(D.today())}`;
           if (!DB.batches) DB.batches = [];
           DB.batches.push({ id: newBatchId, name: batchName, createdAt: D.today() });
 
-          // Lưu tất cả task vào Đợt đó
           let createdCount = 0;
           for (const item of allTasks) {
               let assigneeId = '';
@@ -2923,7 +2941,7 @@ QUY TẮC BẮT BUỘC:
 
       } catch (err) {
           console.error("Lỗi quét ảnh:", err);
-          const errMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `❌ Lỗi quét ảnh: ${err.message}. Vui lòng thử lại với ảnh rõ nét hơn.`, time: new Date().toISOString() };
+          const errMsg = { id: uid(), senderId: 'ai', sender: 'AI Bot', text: `❌ ${err.message}`, time: new Date().toISOString() };
           await chatDocRef.set({ messages: firebase.firestore.FieldValue.arrayUnion(errMsg) }, { merge: true });
       }
   }
