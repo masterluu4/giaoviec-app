@@ -1608,7 +1608,6 @@ function renderTopicGantt(el) {
     }
   });
 
-  const ROW_H = 56; 
   const svgRows = [{ isTitleRow: true, ten: t.ten, start: range.a, end: range.a, days: 0 }, ...rows];
   const built = ganttSVGFor(svgRows, { range, dw, zoom: UI.g.zoom });
   App.subtitle = t.ten;
@@ -1630,13 +1629,13 @@ function renderTopicGantt(el) {
     <div class="gt-split" id="ganttSplit">
       <div class="gt-left">
         <table class="gt-table">
-          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Hạng mục</th><th class="col-nguoi" style="border-right: none;">Trách nhiệm</th>
+          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Hạng mục</th><th class="col-nguoi" style="border-right: none;">Trách nhiệm</th></tr></thead>
           <tbody>
-            ${svgRows.map(r => {
-              if (r.isTitleRow) return `<tr class="gt-title-row" style="height:${ROW_H}px"><td colspan="3">${esc(r.ten)}</td></tr>`;
-              if (r.type === 'summary') return `<tr class="gt-row-summary" style="height:${ROW_H}px"><td colspan="3" style="padding-left:12px">${r.ten}</td></tr>`;
+            ${svgRows.map((r, i) => {
+              if (r.isTitleRow) return `<tr class="gt-title-row" style="height:${built.heights[i]}px"><td colspan="3">${esc(r.ten)}</td></tr>`;
+              if (r.type === 'summary') return `<tr class="gt-row-summary" style="height:${built.heights[i]}px"><td colspan="3" style="padding-left:12px">${r.ten}</td></tr>`;
               return `
-              <tr class="${r.type==='g' ? 'gt-row-parent' : ''} ${r.isHighlight ? 'gt-row-important' : ''}" style="height:${ROW_H}px; cursor:pointer" data-act="ttEdit" data-id="${r.data ? r.data.id : ''}">
+              <tr class="${r.type==='g' ? 'gt-row-parent' : ''} ${r.isHighlight ? 'gt-row-important' : ''}" style="height:${built.heights[i]}px; cursor:pointer" data-act="ttEdit" data-id="${r.data ? r.data.id : ''}">
                 <td class="col-tt">${r.tt || ''}</td>
                 <td class="col-ten ${r.isHighlight ? 'txt-red' : ''}">${esc(r.ten)}</td>
                 <td class="col-nguoi">${personOf(r.nguoi) ? esc(personOf(r.nguoi).ten.split(' ').slice(-2).join(' ')) : '—'}</td>
@@ -1650,18 +1649,21 @@ function renderTopicGantt(el) {
       </div>
       <div class="gt-right-sticky">
         <table class="gt-table-right">
-          <thead><tr style="height:${HEAD_H}px"><th>Tiến độ</th></tr></thead>
+          <thead><tr style="height:${HEAD_H}px"><th>Kết quả thực hiện</th></tr></thead>
           <tbody>
-            ${vt.map((r, i) => {
-              const txt = r.trangThai || '';
-              let colorStyle = 'color:#2563eb; font-weight:600;'; // Mặc định màu xanh dương
-              if (txt.includes('Hoàn thành')) colorStyle = 'color:#059669; font-weight:bold;'; // Xanh lá
-              else if (txt.includes('Theo dõi')) colorStyle = 'color:#d97706; font-weight:bold;'; // Vàng cam
-              else if (txt.includes('Mở')) colorStyle = 'color:#dc2626; font-weight:bold;'; // Đỏ
-              
+            ${svgRows.map((r, i) => {
+              if (r.isTitleRow) return `<tr style="height:${built.heights[i]}px"><td style="background:#1e3a8a"></td></tr>`;
+              if (r.type === 'summary') return `<tr style="height:${built.heights[i]}px;"><td style="background:#e2e8f0"></td></tr>`;
+              let resHtml = '';
+              if (r.ketQua) {
+                let cls = 'gt-res-green';
+                if (r.ketQua.toLowerCase().includes('không đạt') || r.ketQua.toLowerCase().includes('lỗi')) cls = 'gt-res-red';
+                else if (r.ketQua.toLowerCase().includes('đang') || r.ketQua.toLowerCase().includes('chờ')) cls = 'gt-res-yellow';
+                resHtml = `<span class="${cls}">${esc(r.ketQua)}</span>`;
+              }
               return `<tr style="height:${built.heights[i]}px;">
-                <td data-act="editTienDoGantt" data-id="${r.id}" style="cursor:pointer; ${colorStyle}" title="Click để sửa tiến độ">
-                  ${esc(txt)}
+                <td data-act="editKetQua" data-id="${r.data ? r.data.id : ''}" style="cursor:pointer; padding: 4px;" title="Click để sửa kết quả">
+                  ${resHtml || '<span class="muted" style="font-size:11px">...</span>'}
                 </td>
               </tr>`;
             }).join('')}
@@ -2012,7 +2014,7 @@ function renderAsmGantt(body, all) {
     <div class="gt-split" id="ganttSplit">
       <div class="gt-left">
         <table class="gt-table">
-          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Công việc</th><th class="col-nguoi">Người nhận</th></tr></thead>
+          <thead><tr style="height:${HEAD_H}px"><th class="col-tt">TT</th><th class="col-ten">Công việc</th><th class="col-nguoi" style="border-right: none;">Người nhận</th></tr></thead>
           <tbody>
             ${vt.map((r, i) => `
               <tr style="height:${built.heights[i]}px; cursor:pointer" data-act="asmView" data-id="${r.id}">
@@ -2028,11 +2030,20 @@ function renderAsmGantt(body, all) {
       </div>
       <div class="gt-right-sticky">
         <table class="gt-table-right">
-          <thead><tr style="height:${HEAD_H}px"><th>Trạng thái</th></tr></thead>
+          <thead><tr style="height:${HEAD_H}px"><th>Tiến độ</th></tr></thead>
           <tbody>
             ${vt.map((r, i) => {
-              let resHtml = asmBadge(r.trangThai);
-              return `<tr style="height:${built.heights[i]}px;"><td>${resHtml}</td></tr>`;
+              const txt = r.trangThai || '';
+              let colorStyle = 'color:#2563eb; font-weight:600;'; 
+              if (txt.includes('Hoàn thành')) colorStyle = 'color:#059669; font-weight:bold;'; 
+              else if (txt.includes('Theo dõi')) colorStyle = 'color:#d97706; font-weight:bold;'; 
+              else if (txt.includes('Mở')) colorStyle = 'color:#dc2626; font-weight:bold;'; 
+              
+              return `<tr style="height:${built.heights[i]}px;">
+                <td data-act="editTienDoGantt" data-id="${r.id}" style="cursor:pointer; ${colorStyle} padding: 4px;" title="Click để sửa tiến độ">
+                  ${esc(txt)}
+                </td>
+              </tr>`;
             }).join('')}
           </tbody>
         </table>
