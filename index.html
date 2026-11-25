@@ -2169,7 +2169,18 @@ function renderBatchDetail(el) {
 Object.assign(ACT, {
   asmAdd: () => assignForm(null, true),
   asmEdit: d => assignForm(DB.assignments.find(x => x.id === d.id), false),
-  asmView: d => { UI.sub = 'detail'; UI.asmId = d.id; UI.tab.taskDetail = 'info'; App.render(); },
+  asmView: d => {
+    const a = DB.assignments.find(x => x.id === d.id);
+    if (App.cur !== 'tasks' && App.cur !== 'bbh') {
+      App.cur = (a && a.batchId) ? 'bbh' : 'tasks';
+      history.replaceState(null, '', '#' + App.cur);
+      $$('.nav a').forEach(n => n.classList.toggle('on', n.dataset.nav === App.cur));
+    }
+    UI.sub = 'detail';
+    UI.asmId = d.id;
+    UI.tab.taskDetail = 'info';
+    App.render();
+  },
   asmBack: () => { UI.sub = UI.batchId ? 'batch_detail' : null; UI.asmId = null; App.render(); },
   editTienDoGantt: (d) => {
       const a = DB.assignments.find(x => x.id === d.id);
