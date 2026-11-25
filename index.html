@@ -2272,6 +2272,7 @@ Object.assign(ACT, {
           onSave: data => { b.name = data.name; App.changed(); toast('Đã cập nhật tên đợt', 'ok'); }
       });
   },
+  bbhPaste: () => openPasteBBHModal(),
   bbhAdd: () => {
       Form.open({
           title: 'Tạo đợt công việc mới',
@@ -2388,6 +2389,271 @@ Object.assign(ACT, {
     if (dz) dz.classList.remove('show', 'over');
   });
 })();
+function openPasteBBHModal() {
+  const defaultBatchName = 'Biên bản họp ngày ' + F.date(D.today());
+  let parsedRows = [];
+
+  const parseDateVN = (str) => {
+    const s = String(str || '').trim();
+    if (!s) return D.add(D.today(), 7);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+    if (m) {
+      const dd = pad(+m[1]);
+      const mm = pad(+m[2]);
+      let yy = m[3];
+      if (yy.length === 2) yy = '20' + yy;
+      return `${yy}-${mm}-${dd}`;
+    }
+    return D.add(D.today(), 7);
+  };
+
+  const matchPersonId = (rawName) => {
+    if (!rawName) return '';
+    const clean = String(rawName).toLowerCase().replace(/mr|mrs|ms|anh|chị|em|\./g, '').trim();
+    if (!clean) return '';
+    const firstPart = clean.split(/[,;\/\n]/)[0].trim();
+    const found = DB.people.find(p => {
+      const pName = p.ten.toLowerCase();
+      const lastWord = pName.split(' ').pop();
+      return pName === firstPart || pName.includes(firstPart) || firstPart.includes(pName) || firstPart.includes(lastWord);
+    });
+    return found ? found.id : '';
+  };
+
+  const expandHtmlTable = (html) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const tbl = doc.querySelector('table');
+    if (!tbl) return null;
+    const grid = [];
+    const trs = Array.from(tbl.querySelectorAll('tr'));
+    trs.forEach((tr, rIdx) => {
+      grid[rIdx] = grid[rIdx] || [];
+      let cIdx = 0;
+      Array.from(tr.children).forEach(cell => {
+        if (cell.tagName !== 'TD' && cell.tagName !== 'TH') return;
+        while (grid[rIdx][cIdx] !== undefined) cIdx++;
+        const rs = Math.max(1, parseInt(cell.getAttribute('rowspan') || '1', 10));
+        const cs = Math.max(1, parseInt(cell.getAttribute('colspan') || '1', 10));
+        const text = (cell.innerText || cell.textContent || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+        for (let r = 0; r < rs; r++) {
+          grid[rIdx + r] = grid[rIdx + r] || [];
+          for (let c = 0; c < cs; c++) {
+            grid[rIdx + r][cIdx + c] = text;
+          }
+        }
+        cIdx += cs;
+      });
+    });
+    return grid.filter(row => row && row.some(cell => String(cell || '').trim() !== ''));
+  };
+
+  const parsePlainTSV = (text) => {
+    return String(text || '')
+      .split(/\r?\n/)
+      .map(line => line.split('\t').map(s => s.trim()))
+      .filter(row => row.some(c => c !== ''));
+  };
+
+  const convertGridToTasks = (grid) => {
+    if (!grid || !grid.length) return [];
+    const firstRow = grid[0].map(c => String(c || '').toLowerCase());
+    const hasHeader = firstRow.some(c => /(stt|^tt$|vấn đề|công việc|nội dung|trách nhiệm|t\.nhiệm|h\.thành|hạn|deadline)/.test(c));
+
+    let idxStt = 0, idxIssue = 1, idxTask = 2, idxOwner = 3, idxDue = 4;
+    if (hasHeader) {
+      const findCol = (re, fallback) => {
+        const i = firstRow.findIndex(c => re.test(c));
+        return i >= 0 ? i : fallback;
+      };
+      idxStt = findCol(/(^tt$|^stt$|thứ tự)/, 0);
+      idxIssue = findCol(/(vấn đề|hạng mục|nội dung)/, -1);
+      idxTask = findCol(/(công việc|thực hiện|giải pháp|hành động)/, idxIssue >= 0 ? idxIssue + 1 : 1);
+      idxOwner = findCol(/(t\.nhiệm|trách nhiệm|phụ trách|người nhận|đơn vị)/, 3);
+      idxDue = findCol(/(h\.thành|hạn|deadline|thời hạn|ngày)/, 4);
+    } else if (grid[0].length <= 4) {
+      idxStt = 0; idxIssue = -1; idxTask = 1; idxOwner = 2; idxDue = 3;
+    }
+
+    const dataRows = hasHeader ? grid.slice(1) : grid;
+    const rawTasks = [];
+    dataRows.forEach((r, i) => {
+      const sttRaw = String(r[idxStt] ?? (i + 1)).trim();
+      const issueTxt = idxIssue >= 0 ? String(r[idxIssue] ?? '').trim() : '';
+      const taskTxt = idxTask >= 0 ? String(r[idxTask] ?? '').trim() : '';
+      let fullName = '';
+      if (issueTxt && taskTxt && issueTxt !== taskTxt) fullName = `${issueTxt} - ${taskTxt}`;
+      else fullName = taskTxt || issueTxt;
+      if (!fullName) return;
+
+      const ownerRaw = idxOwner >= 0 ? String(r[idxOwner] ?? '').trim() : '';
+      const dueRaw = idxDue >= 0 ? String(r[idxDue] ?? '').trim() : '';
+      rawTasks.push({
+        stt: sttRaw || String(i + 1),
+        ten: fullName,
+        ownerRaw,
+        nguoiNhan: matchPersonId(ownerRaw),
+        deadline: parseDateVN(dueRaw)
+      });
+    });
+
+    // Tự đánh STT dạng 6.1, 6.2 nếu có các dòng bị gộp cùng 1 số TT
+    const sttCounts = {};
+    rawTasks.forEach(t => { sttCounts[t.stt] = (sttCounts[t.stt] || 0) + 1; });
+    const sttSeen = {};
+    rawTasks.forEach(t => {
+      if (sttCounts[t.stt] > 1) {
+        sttSeen[t.stt] = (sttSeen[t.stt] || 0) + 1;
+        t.stt = `${t.stt}.${sttSeen[t.stt]}`;
+      }
+    });
+    return rawTasks;
+  };
+
+  const m = Modal.open({
+    title: '📋 Dán bảng Biên bản họp (Word / Excel)',
+    width: 980,
+    body: `
+      <div class="form" style="margin-bottom:12px">
+        <label class="field full">
+          <span>Tên đợt / Biên bản họp <i class="req">*</i></span>
+          <input class="inp" id="pasteBatchName" value="${esc(defaultBatchName)}">
+        </label>
+      </div>
+      <div id="pasteZone" contenteditable="true" style="border:2px dashed #0d9488; background:#f0fdfa; border-radius:10px; padding:16px; text-align:center; color:#0f766e; font-weight:600; cursor:text; min-height:64px; outline:none;">
+        Bấm vào đây và nhấn Ctrl + V để dán bảng vừa copy từ Word hoặc Excel...
+      </div>
+      <div id="pastePreview" class="mt"></div>
+    `,
+    foot: `
+      <span class="muted small left" id="pasteCountInfo">Chưa có dữ liệu</span>
+      <button class="btn" data-cancel>Hủy</button>
+      <button class="btn pri" data-save disabled>${ic('check')} Lưu tạo đợt BBH</button>
+    `
+  });
+
+  const zone = m.el.querySelector('#pasteZone');
+  const preview = m.el.querySelector('#pastePreview');
+  const infoEl = m.el.querySelector('#pasteCountInfo');
+  const saveBtn = m.el.querySelector('[data-save]');
+  m.el.querySelector('[data-cancel]').onclick = () => m.close();
+
+  const renderPreview = () => {
+    saveBtn.disabled = parsedRows.length === 0;
+    infoEl.innerHTML = parsedRows.length
+      ? `Đã đọc chính xác <b>${parsedRows.length}</b> công việc. Bạn có thể sửa nhanh trước khi lưu.`
+      : 'Chưa có dữ liệu';
+
+    if (!parsedRows.length) {
+      preview.innerHTML = '';
+      return;
+    }
+
+    const peopleOpts = `<option value="">(Chưa giao)</option>` + DB.people.map(p => `<option value="${esc(p.id)}">${esc(p.ten)}</option>`).join('');
+    preview.innerHTML = `
+      <div class="tbl-wrap" style="max-height:42vh; border:1px solid #e3e7ef; border-radius:10px;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:65px">TT</th>
+              <th>Nội dung công việc (giữ nguyên 100% bản gốc)</th>
+              <th style="width:180px">Trách nhiệm</th>
+              <th style="width:135px">Hạn chót</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${parsedRows.map((r, i) => `
+              <tr>
+                <td><input class="inp sm" style="width:55px; text-align:center" value="${esc(r.stt)}" data-pr-f="stt" data-i="${i}"></td>
+                <td><textarea class="inp sm" rows="2" style="width:100%; min-height:44px; line-height:1.35" data-pr-f="ten" data-i="${i}">${esc(r.ten)}</textarea></td>
+                <td>
+                  <select class="inp sm" style="width:100%" data-pr-f="nguoiNhan" data-i="${i}">${peopleOpts}</select>
+                  ${!r.nguoiNhan && r.ownerRaw ? `<div style="font-size:11px; color:#d97706; margin-top:2px">Gốc: ${esc(r.ownerRaw)}</div>` : ''}
+                </td>
+                <td><input type="date" class="inp sm" style="width:100%" value="${esc(r.deadline)}" data-pr-f="deadline" data-i="${i}"></td>
+                <td class="c"><button type="button" class="ibtn del" data-pr-del="${i}" title="Bỏ dòng này">${ic('trash')}</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    parsedRows.forEach((r, i) => {
+      const sel = preview.querySelector(`select[data-pr-f="nguoiNhan"][data-i="${i}"]`);
+      if (sel) sel.value = r.nguoiNhan || '';
+    });
+  };
+
+  preview.addEventListener('input', e => {
+    const el = e.target;
+    if (el.dataset.prF) parsedRows[+el.dataset.i][el.dataset.prF] = el.value;
+  });
+  preview.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset.prF) parsedRows[+el.dataset.i][el.dataset.prF] = el.value;
+  });
+  preview.addEventListener('click', e => {
+    const btn = e.target.closest('[data-pr-del]');
+    if (!btn) return;
+    parsedRows.splice(+btn.dataset.prDel, 1);
+    renderPreview();
+  });
+
+  zone.addEventListener('paste', e => {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
+    const plain = e.clipboardData.getData('text/plain');
+    let grid = html ? expandHtmlTable(html) : null;
+    if (!grid || !grid.length) grid = parsePlainTSV(plain);
+    parsedRows = convertGridToTasks(grid);
+    zone.innerHTML = parsedRows.length
+      ? `✅ Đã nhận <b>${parsedRows.length}</b> dòng từ Clipboard. Bạn có thể Ctrl + V bảng khác để thay thế.`
+      : `⚠️ Không nhận diện được bảng. Hãy copy lại vùng bảng trong Word hoặc Excel rồi Ctrl + V.`;
+    renderPreview();
+  });
+
+  saveBtn.onclick = () => {
+    const batchName = m.el.querySelector('#pasteBatchName').value.trim();
+    if (!batchName) { toast('Vui lòng nhập tên đợt / BBH', 'err'); return; }
+    if (!parsedRows.length) return;
+
+    const newBatchId = uid();
+    if (!DB.batches) DB.batches = [];
+    DB.batches.push({ id: newBatchId, name: batchName, createdAt: D.today() });
+
+    const currentUser = localStorage.getItem('chat_current_user') || (DB.people[0]?.id || '');
+    parsedRows.forEach((item, idx) => {
+      DB.assignments.push({
+        id: uid(),
+        ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'),
+        stt: item.stt || String(idx + 1),
+        ten: item.ten.trim() || 'Công việc chưa đặt tên',
+        moTa: 'Nhập từ bảng Word/Excel',
+        nguoiGiao: currentUser,
+        nguoiNhan: item.nguoiNhan || '',
+        nguoiPhoiHop: [],
+        start: D.today(),
+        deadline: item.deadline || D.add(D.today(), 7),
+        uuTien: 'Trung bình',
+        trangThai: 'Mới giao',
+        pct: 0,
+        lyDoTre: '',
+        dep: '',
+        checklist: [],
+        comments: [],
+        dinhKem: [],
+        log: [],
+        batchId: newBatchId
+      });
+    });
+
+    App.changed();
+    m.close();
+    toast(`Đã tạo đợt "${batchName}" với ${parsedRows.length} công việc chính xác 100%!`, 'ok');
+  };
+}
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.matches && el.matches('[data-attach]') && el.files[0]) {
