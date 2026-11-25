@@ -307,6 +307,17 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 #btn-delete-selected.show { display: block; animation: pop .2s; }
 #ai-mic.recording { background: #dc2626 !important; animation: pulse 1s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  /* BỘ LỌC CHỌN NHIỀU NGƯỜI TRÊN DASHBOARD */
+.msel { position: relative; display: inline-block; }
+.msel-btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); background: #fff; color: #1f2937; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.msel-btn:hover { border-color: var(--p); color: var(--p-d); }
+.msel-menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 240px; max-height: 280px; overflow-y: auto; background: #fff; border: 1px solid #e3e7ef; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.16); padding: 6px; z-index: 60; display: none; text-align: left; }
+.msel.open .msel-menu { display: block; animation: pop .15s; }
+.msel-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: #1f2937; font-weight: 500; user-select: none; }
+.msel-item:hover { background: var(--p-50); }
+.msel-item input { width: 15px; height: 15px; accent-color: var(--p); cursor: pointer; margin: 0; pointer-events: none; }
+.msel-item .cnt { margin-left: auto; font-size: 11.5px; color: #667085; font-weight: 600; }
+.msel-sep { height: 1px; background: #eef0f5; margin: 4px 0; }
 </style>
 
 <!-- FIREBASE SDK & CONFIG -->
@@ -2322,46 +2333,74 @@ const vDashboard = {
     }).sort((a, b) => b.late - a.late || b.total - a.total);
     const maxTotal = Math.max(...peopleStats.map(x => x.total), 1);
 
-    UI.dashFilter = UI.dashFilter || { latePerson: '', todayPerson: '' };
+    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
 
-    const buildPersonOpts = (list) => {
+    const buildMultiFilter = (type, list, selectedIds) => {
       const counts = {};
       let unassigned = 0;
       list.forEach(t => {
         if (t.nguoiNhan) counts[t.nguoiNhan] = (counts[t.nguoiNhan] || 0) + 1;
         else unassigned++;
       });
-      const opts = [{ value: '', label: `Tất cả nhân sự (${list.length})` }];
-      Object.keys(counts).forEach(pid => {
-        const p = personOf(pid);
-        if (p) opts.push({ value: pid, label: `${p.ten} (${counts[pid]})` });
-      });
-      if (unassigned > 0) opts.push({ value: '__none__', label: `Chưa giao (${unassigned})` });
-      return opts;
+
+      const items = Object.keys(counts)
+        .map(pid => ({ id: pid, name: personOf(pid)?.ten || pid, cnt: counts[pid] }))
+        .sort((a, b) => b.cnt - a.cnt);
+      if (unassigned > 0) items.push({ id: '__none__', name: 'Chưa giao', cnt: unassigned });
+
+      const validIds = items.map(x => x.id);
+      const active = selectedIds.filter(id => validIds.includes(id));
+
+      let btnLabel = `Trách nhiệm: Tất cả (${list.length})`;
+      if (active.length === 1) {
+        const it = items.find(x => x.id === active[0]);
+        btnLabel = `Trách nhiệm: ${it ? it.name : ''}`;
+      } else if (active.length > 1) {
+        btnLabel = `Trách nhiệm: Đã chọn ${active.length} người`;
+      }
+
+      const isOpen = UI.dashOpenDrop === type;
+      return `<div class="msel ${isOpen ? 'open' : ''}" data-msel="${type}">
+        <button type="button" class="msel-btn" data-act="dashMsToggle" data-type="${type}">
+          <span>${esc(btnLabel)}</span><span>▾</span>
+        </button>
+        <div class="msel-menu">
+          <div class="msel-item" data-act="dashMsAll" data-type="${type}">
+            <input type="checkbox" ${active.length === 0 ? 'checked' : ''}>
+            <span><b>Tất cả nhân sự</b></span>
+            <span class="cnt">${list.length}</span>
+          </div>
+          <div class="msel-sep"></div>
+          ${items.map(it => `
+            <div class="msel-item" data-act="dashMsPick" data-type="${type}" data-id="${esc(it.id)}">
+              <input type="checkbox" ${active.includes(it.id) ? 'checked' : ''}>
+              <span>${esc(it.name)}</span>
+              <span class="cnt">${it.cnt}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
     };
 
-    const filterByPerson = (list, filterVal) => {
-      if (!filterVal) return list;
-      if (filterVal === '__none__') return list.filter(t => !t.nguoiNhan);
-      return list.filter(t => t.nguoiNhan === filterVal);
+    const filterByPeople = (list, selectedIds) => {
+      if (!selectedIds || selectedIds.length === 0) return list;
+      return list.filter(t => {
+        const key = t.nguoiNhan || '__none__';
+        return selectedIds.includes(key);
+      });
     };
 
     let overdueHTML = '';
     if (lateTasks.length > 0) {
-      const lateOpts = buildPersonOpts(lateTasks);
-      if (UI.dashFilter.latePerson && !lateOpts.some(o => o.value === UI.dashFilter.latePerson)) {
-        UI.dashFilter.latePerson = '';
-      }
-      const viewLate = filterByPerson(lateTasks, UI.dashFilter.latePerson);
-      const lateWho = UI.dashFilter.latePerson === '__none__'
-        ? ' — Chưa giao'
-        : (UI.dashFilter.latePerson ? ` — ${esc(personOf(UI.dashFilter.latePerson)?.ten || '')}` : '');
+      const viewLate = filterByPeople(lateTasks, UI.dashFilter.latePeople);
+      const lateNames = UI.dashFilter.latePeople.map(id => id === '__none__' ? 'Chưa giao' : (personOf(id)?.ten || '')).filter(Boolean);
+      const lateWho = lateNames.length ? ` — ${esc(lateNames.join(', '))}` : '';
 
       overdueHTML = `<div class="card mt" style="border-color:#fca5a5; background:#fef2f2; box-shadow:0 4px 12px rgba(220,38,38,.15)">
         <div class="card-h" style="border-bottom-color:#fecaca; background:#fee2e2; border-radius:14px 14px 0 0">
           <h3 style="color:#b91c1c; display:flex; align-items:center; gap:8px">${ic('alert')} CẢNH BÁO: CÓ ${viewLate.length} CÔNG VIỆC ĐANG QUÁ HẠN${lateWho}</h3>
           <div class="right">
-            ${selectHTML('dashLateFilter', lateOpts, UI.dashFilter.latePerson, 'sm')}
+            ${buildMultiFilter('late', lateTasks, UI.dashFilter.latePeople)}
           </div>
         </div>
         <div class="card-b" style="padding:16px">
@@ -2389,20 +2428,15 @@ const vDashboard = {
     const todayTasks = asms.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === today);
     let todayHTML = '';
     if (todayTasks.length > 0) {
-      const todayOpts = buildPersonOpts(todayTasks);
-      if (UI.dashFilter.todayPerson && !todayOpts.some(o => o.value === UI.dashFilter.todayPerson)) {
-        UI.dashFilter.todayPerson = '';
-      }
-      const viewToday = filterByPerson(todayTasks, UI.dashFilter.todayPerson);
-      const todayWho = UI.dashFilter.todayPerson === '__none__'
-        ? ' — Chưa giao'
-        : (UI.dashFilter.todayPerson ? ` — ${esc(personOf(UI.dashFilter.todayPerson)?.ten || '')}` : '');
+      const viewToday = filterByPeople(todayTasks, UI.dashFilter.todayPeople);
+      const todayNames = UI.dashFilter.todayPeople.map(id => id === '__none__' ? 'Chưa giao' : (personOf(id)?.ten || '')).filter(Boolean);
+      const todayWho = todayNames.length ? ` — ${esc(todayNames.join(', '))}` : '';
 
       todayHTML = `<div class="card mt" style="border-color:#fdba74; background:#fff7ed; box-shadow:0 4px 12px rgba(234,88,12,.15)">
         <div class="card-h" style="border-bottom-color:#fed7aa; background:#ffedd5; border-radius:14px 14px 0 0">
           <h3 style="color:#c2410c; display:flex; align-items:center; gap:8px">${ic('alert')} LƯU Ý: CÓ ${viewToday.length} CÔNG VIỆC ĐẾN HẠN HÔM NAY${todayWho}</h3>
           <div class="right">
-            ${selectHTML('dashTodayFilter', todayOpts, UI.dashFilter.todayPerson, 'sm')}
+            ${buildMultiFilter('today', todayTasks, UI.dashFilter.todayPeople)}
           </div>
         </div>
         <div class="card-b" style="padding:16px">
@@ -2567,7 +2601,36 @@ Object.assign(ACT, {
   uAdd: () => personForm(null), uEdit: d => personForm(DB.people.find(x => x.id === d.id)),
   uDel: async d => { const p = DB.people.find(x => x.id === d.id); if (await Modal.confirm(`Xóa <b>${esc(p.ten)}</b>?`, { ok: 'Xóa', danger: true })) { DB.topicTasks.forEach(t => { if (t.nguoi === p.id) t.nguoi = ''; }); DB.assignments.forEach(a => { if (a.nguoiNhan === p.id) a.nguoiNhan = ''; }); DB.people = DB.people.filter(x => x !== p); App.changed(); } }
 });
+Object.assign(ACT, {
+  dashMsToggle: d => {
+    UI.dashOpenDrop = UI.dashOpenDrop === d.type ? null : d.type;
+    App.render();
+  },
+  dashMsAll: d => {
+    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
+    if (d.type === 'late') UI.dashFilter.latePeople = [];
+    else UI.dashFilter.todayPeople = [];
+    UI.dashOpenDrop = d.type;
+    App.render();
+  },
+  dashMsPick: d => {
+    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
+    const key = d.type === 'late' ? 'latePeople' : 'todayPeople';
+    const arr = UI.dashFilter[key];
+    const idx = arr.indexOf(d.id);
+    if (idx >= 0) arr.splice(idx, 1);
+    else arr.push(d.id);
+    UI.dashOpenDrop = d.type;
+    App.render();
+  }
+});
 
+document.addEventListener('click', e => {
+  if (UI.dashOpenDrop && !e.target.closest('.msel')) {
+    UI.dashOpenDrop = null;
+    $$('.msel.open').forEach(el => el.classList.remove('open'));
+  }
+});
 /* ============================================
    CÀI ĐẶT
    ============================================ */
