@@ -2137,7 +2137,7 @@ function renderTaskTab(a, d, tab) {
 const vBBH = {
   title: 'Giao việc theo BBH', icon: 'folder', desc: 'Quản lý công việc theo nhóm / Biên bản họp',
   count: () => (DB.batches || []).length || '',
-  tools: () => `<button class="btn pri" data-act="bbhAdd">${ic('plus')} Tạo đợt mới</button>`,
+  tools: () => `<button class="btn xl" data-act="bbhPaste">${ic('copy')} Dán bảng Word/Excel</button><button class="btn pri" data-act="bbhAdd">${ic('plus')} Tạo đợt mới</button>`,
   render(el) {
     if (UI.sub === 'detail' && UI.asmId) return renderTaskDetail(el);
     if (UI.sub === 'batch_detail' && UI.batchId) return renderBatchDetail(el);
