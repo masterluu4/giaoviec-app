@@ -2534,8 +2534,6 @@ const vDashboard = {
         </div>
       ` : '<div class="empty">Chưa có dữ liệu</div>')}
     </div>`;
-    onVal('dashLateFilter', v => { UI.dashFilter.latePerson = v; App.render(); });
-    onVal('dashTodayFilter', v => { UI.dashFilter.todayPerson = v; App.render(); });
     setTimeout(() => {
       const el2 = $('#dSoon'); if (!el2) return;
       table(el2, { id: 'soon', rows: soonTasks, pageSize: 5, 
