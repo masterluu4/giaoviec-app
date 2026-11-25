@@ -2436,30 +2436,44 @@ const vDashboard = {
     }).sort((a, b) => b.late - a.late || b.total - a.total);
     const maxTotal = Math.max(...peopleStats.map(x => x.total), 1);
 
-    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
+    UI.dashFilter = Object.assign(
+      { latePeople: [], todayPeople: [], lateBatches: [], todayBatches: [] },
+      UI.dashFilter || {}
+    );
 
-    const buildMultiFilter = (type, list, selectedIds) => {
+    const batchOf = id => (DB.batches || []).find(b => b.id === id);
+
+    const buildMultiFilter = (type, mode, list, selectedIds) => {
       const counts = {};
-      let unassigned = 0;
       list.forEach(t => {
-        if (t.nguoiNhan) counts[t.nguoiNhan] = (counts[t.nguoiNhan] || 0) + 1;
-        else unassigned++;
+        const key = mode === 'person' ? (t.nguoiNhan || '__none__') : (t.batchId || '__single__');
+        counts[key] = (counts[key] || 0) + 1;
       });
 
-      const items = Object.keys(counts)
-        .map(pid => ({ id: pid, name: personOf(pid)?.ten || pid, cnt: counts[pid] }))
-        .sort((a, b) => b.cnt - a.cnt);
-      if (unassigned > 0) items.push({ id: '__none__', name: 'Chưa giao', cnt: unassigned });
+      const items = Object.keys(counts).map(k => {
+        let name = k;
+        if (mode === 'person') {
+          name = k === '__none__' ? 'Chưa giao' : (personOf(k)?.ten || k);
+        } else {
+          name = k === '__single__' ? 'Giao việc đơn lẻ' : (batchOf(k)?.name || 'BBH khác');
+        }
+        return { id: k, name, cnt: counts[k] };
+      }).sort((a, b) => b.cnt - a.cnt);
 
       const validIds = items.map(x => x.id);
-      const active = selectedIds.filter(id => validIds.includes(id));
+      const active = (selectedIds || []).filter(id => validIds.includes(id));
 
-      let btnLabel = `Trách nhiệm: Tất cả (${list.length})`;
+      const prefix = mode === 'person' ? 'Trách nhiệm' : 'BBH';
+      const allLabel = mode === 'person' ? 'Tất cả nhân sự' : 'Tất cả BBH';
+      const unit = mode === 'person' ? 'người' : 'BBH';
+
+      let btnLabel = `${prefix}: Tất cả (${list.length})`;
       if (active.length === 1) {
         const it = items.find(x => x.id === active[0]);
-        btnLabel = `Trách nhiệm: ${it ? it.name : ''}`;
+        const shortName = it && it.name.length > 22 ? it.name.slice(0, 22) + '…' : (it ? it.name : '');
+        btnLabel = `${prefix}: ${shortName}`;
       } else if (active.length > 1) {
-        btnLabel = `Trách nhiệm: Đã chọn ${active.length} người`;
+        btnLabel = `${prefix}: Đã chọn ${active.length} ${unit}`;
       }
 
       const isOpen = UI.dashOpenDrop === type;
@@ -2470,7 +2484,7 @@ const vDashboard = {
         <div class="msel-menu">
           <div class="msel-item" data-act="dashMsAll" data-type="${type}">
             <input type="checkbox" ${active.length === 0 ? 'checked' : ''}>
-            <span><b>Tất cả nhân sự</b></span>
+            <span><b>${allLabel}</b></span>
             <span class="cnt">${list.length}</span>
           </div>
           <div class="msel-sep"></div>
@@ -2485,29 +2499,42 @@ const vDashboard = {
       </div>`;
     };
 
-    const filterByPeople = (list, selectedIds) => {
-      if (!selectedIds || selectedIds.length === 0) return list;
+    const filterDashTasks = (list, peopleIds, batchIds) => {
       return list.filter(t => {
-        const key = t.nguoiNhan || '__none__';
-        return selectedIds.includes(key);
+        if (peopleIds && peopleIds.length > 0 && !peopleIds.includes(t.nguoiNhan || '__none__')) return false;
+        if (batchIds && batchIds.length > 0 && !batchIds.includes(t.batchId || '__single__')) return false;
+        return true;
       });
+    };
+
+    const buildFilterTitle = (peopleIds, batchIds) => {
+      const parts = [];
+      if (batchIds && batchIds.length) {
+        const bNames = batchIds.map(id => id === '__single__' ? 'Giao việc đơn lẻ' : (batchOf(id)?.name || '')).filter(Boolean);
+        if (bNames.length) parts.push(bNames.join(', '));
+      }
+      if (peopleIds && peopleIds.length) {
+        const pNames = peopleIds.map(id => id === '__none__' ? 'Chưa giao' : (personOf(id)?.ten || '')).filter(Boolean);
+        if (pNames.length) parts.push(pNames.join(', '));
+      }
+      return parts.length ? ` — ${esc(parts.join(' · '))}` : '';
     };
 
     let overdueHTML = '';
     if (lateTasks.length > 0) {
-      const viewLate = filterByPeople(lateTasks, UI.dashFilter.latePeople);
-      const lateNames = UI.dashFilter.latePeople.map(id => id === '__none__' ? 'Chưa giao' : (personOf(id)?.ten || '')).filter(Boolean);
-      const lateWho = lateNames.length ? ` — ${esc(lateNames.join(', '))}` : '';
+      const viewLate = filterDashTasks(lateTasks, UI.dashFilter.latePeople, UI.dashFilter.lateBatches);
+      const lateTitleSub = buildFilterTitle(UI.dashFilter.latePeople, UI.dashFilter.lateBatches);
 
       overdueHTML = `<div class="card mt" style="border-color:#fca5a5; background:#fef2f2; box-shadow:0 4px 12px rgba(220,38,38,.15)">
         <div class="card-h" style="border-bottom-color:#fecaca; background:#fee2e2; border-radius:14px 14px 0 0">
-          <h3 style="color:#b91c1c; display:flex; align-items:center; gap:8px">${ic('alert')} CẢNH BÁO: CÓ ${viewLate.length} CÔNG VIỆC ĐANG QUÁ HẠN${lateWho}</h3>
+          <h3 style="color:#b91c1c; display:flex; align-items:center; gap:8px">${ic('alert')} CẢNH BÁO: CÓ ${viewLate.length} CÔNG VIỆC ĐANG QUÁ HẠN${lateTitleSub}</h3>
           <div class="right">
-            ${buildMultiFilter('late', lateTasks, UI.dashFilter.latePeople)}
+            ${buildMultiFilter('late_b', 'batch', lateTasks, UI.dashFilter.lateBatches)}
+            ${buildMultiFilter('late_p', 'person', lateTasks, UI.dashFilter.latePeople)}
           </div>
         </div>
         <div class="card-b" style="padding:16px">
-          <div class="grid cols-2" style="gap:12px">
+          ${viewLate.length ? `<div class="grid cols-2" style="gap:12px">
             ${viewLate.map(t => {
               const pn = personOf(t.nguoiNhan);
               return `<div class="dash-card" draggable="true" data-drag-task="${t.id}" style="padding:12px 16px; border:1px solid #fecaca; border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,.05); transition:transform .15s" data-act="asmView" data-id="${t.id}" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
@@ -2524,7 +2551,7 @@ const vDashboard = {
                 </div>
               </div>`;
             }).join('')}
-          </div>
+          </div>` : `<div class="empty" style="padding:20px">Không có công việc quá hạn nào khớp bộ lọc đang chọn.</div>`}
         </div>
       </div>`;
     }
@@ -2532,19 +2559,19 @@ const vDashboard = {
     const todayTasks = asms.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === today);
     let todayHTML = '';
     if (todayTasks.length > 0) {
-      const viewToday = filterByPeople(todayTasks, UI.dashFilter.todayPeople);
-      const todayNames = UI.dashFilter.todayPeople.map(id => id === '__none__' ? 'Chưa giao' : (personOf(id)?.ten || '')).filter(Boolean);
-      const todayWho = todayNames.length ? ` — ${esc(todayNames.join(', '))}` : '';
+      const viewToday = filterDashTasks(todayTasks, UI.dashFilter.todayPeople, UI.dashFilter.todayBatches);
+      const todayTitleSub = buildFilterTitle(UI.dashFilter.todayPeople, UI.dashFilter.todayBatches);
 
       todayHTML = `<div class="card mt" style="border-color:#fdba74; background:#fff7ed; box-shadow:0 4px 12px rgba(234,88,12,.15)">
         <div class="card-h" style="border-bottom-color:#fed7aa; background:#ffedd5; border-radius:14px 14px 0 0">
-          <h3 style="color:#c2410c; display:flex; align-items:center; gap:8px">${ic('alert')} LƯU Ý: CÓ ${viewToday.length} CÔNG VIỆC ĐẾN HẠN HÔM NAY${todayWho}</h3>
+          <h3 style="color:#c2410c; display:flex; align-items:center; gap:8px">${ic('alert')} LƯU Ý: CÓ ${viewToday.length} CÔNG VIỆC ĐẾN HẠN HÔM NAY${todayTitleSub}</h3>
           <div class="right">
-            ${buildMultiFilter('today', todayTasks, UI.dashFilter.todayPeople)}
+            ${buildMultiFilter('today_b', 'batch', todayTasks, UI.dashFilter.todayBatches)}
+            ${buildMultiFilter('today_p', 'person', todayTasks, UI.dashFilter.todayPeople)}
           </div>
         </div>
         <div class="card-b" style="padding:16px">
-          <div class="grid cols-2" style="gap:12px">
+          ${viewToday.length ? `<div class="grid cols-2" style="gap:12px">
             ${viewToday.map(t => {
               const pn = personOf(t.nguoiNhan);
               return `<div class="dash-card" draggable="true" data-drag-task="${t.id}" style="padding:12px 16px; border:1px solid #fed7aa; border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,.05); transition:transform .15s" data-act="asmView" data-id="${t.id}" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
@@ -2561,7 +2588,7 @@ const vDashboard = {
                 </div>
               </div>`;
             }).join('')}
-          </div>
+          </div>` : `<div class="empty" style="padding:20px">Không có công việc đến hạn hôm nay nào khớp bộ lọc đang chọn.</div>`}
         </div>
       </div>`;
     }
@@ -2704,21 +2731,29 @@ Object.assign(ACT, {
   uAdd: () => personForm(null), uEdit: d => personForm(DB.people.find(x => x.id === d.id)),
   uDel: async d => { const p = DB.people.find(x => x.id === d.id); if (await Modal.confirm(`Xóa <b>${esc(p.ten)}</b>?`, { ok: 'Xóa', danger: true })) { DB.topicTasks.forEach(t => { if (t.nguoi === p.id) t.nguoi = ''; }); DB.assignments.forEach(a => { if (a.nguoiNhan === p.id) a.nguoiNhan = ''; }); DB.people = DB.people.filter(x => x !== p); App.changed(); } }
 });
+const DASH_FILTER_MAP = {
+  late_p: 'latePeople',
+  late_b: 'lateBatches',
+  today_p: 'todayPeople',
+  today_b: 'todayBatches'
+};
+
 Object.assign(ACT, {
   dashMsToggle: d => {
     UI.dashOpenDrop = UI.dashOpenDrop === d.type ? null : d.type;
     App.render();
   },
   dashMsAll: d => {
-    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
-    if (d.type === 'late') UI.dashFilter.latePeople = [];
-    else UI.dashFilter.todayPeople = [];
+    UI.dashFilter = Object.assign({ latePeople: [], todayPeople: [], lateBatches: [], todayBatches: [] }, UI.dashFilter || {});
+    const key = DASH_FILTER_MAP[d.type];
+    if (key) UI.dashFilter[key] = [];
     UI.dashOpenDrop = d.type;
     App.render();
   },
   dashMsPick: d => {
-    UI.dashFilter = UI.dashFilter || { latePeople: [], todayPeople: [] };
-    const key = d.type === 'late' ? 'latePeople' : 'todayPeople';
+    UI.dashFilter = Object.assign({ latePeople: [], todayPeople: [], lateBatches: [], todayBatches: [] }, UI.dashFilter || {});
+    const key = DASH_FILTER_MAP[d.type];
+    if (!key) return;
     const arr = UI.dashFilter[key];
     const idx = arr.indexOf(d.id);
     if (idx >= 0) arr.splice(idx, 1);
