@@ -2297,7 +2297,97 @@ Object.assign(ACT, {
       assignForm(a, true);
   }
 });
+function completeDashTask(id) {
+  const a = DB.assignments.find(x => x.id === id);
+  if (!a || a.trangThai === 'Hoàn thành') return;
 
+  UI.lastDoneUndo = {
+    id: a.id,
+    trangThai: a.trangThai,
+    pct: a.pct,
+    ngayDuyet: a.ngayDuyet || '',
+    log: clone(a.log || [])
+  };
+
+  a.trangThai = 'Hoàn thành';
+  a.pct = 100;
+  a.ngayDuyet = D.today();
+  a.log = (a.log || []).filter(x => x[0] !== D.today());
+  a.log.push([D.today(), 100]);
+
+  App.changed();
+  toast(
+    `✅ Đã hoàn thành: <b>${esc(a.ten.slice(0, 45))}${a.ten.length > 45 ? '…' : ''}</b> ` +
+    `<button type="button" class="btn sm" style="margin-left:8px; background:#fff; color:#111827;" data-act="dashUndoDone">Hoàn tác</button>`,
+    'ok',
+    5500
+  );
+}
+
+Object.assign(ACT, {
+  dashDone: d => completeDashTask(d.id),
+  dashUndoDone: () => {
+    const u = UI.lastDoneUndo;
+    if (!u) return;
+    const a = DB.assignments.find(x => x.id === u.id);
+    if (!a) return;
+    a.trangThai = u.trangThai;
+    a.pct = u.pct;
+    a.ngayDuyet = u.ngayDuyet;
+    a.log = u.log;
+    UI.lastDoneUndo = null;
+    App.changed();
+    toast('Đã khôi phục lại trạng thái trước đó', 'ok');
+  }
+});
+
+(function initDashDragDone() {
+  let dragTaskId = null;
+
+  function getDropZone() {
+    let dz = document.getElementById('dash-drop-done');
+    if (!dz) {
+      dz = document.createElement('div');
+      dz.id = 'dash-drop-done';
+      dz.dataset.runtime = '1';
+      dz.innerHTML = '✓ Thả công việc vào đây để đánh dấu HOÀN THÀNH';
+      document.body.appendChild(dz);
+
+      dz.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        dz.classList.add('over');
+      });
+      dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain') || dragTaskId;
+        dz.classList.remove('over', 'show');
+        dragTaskId = null;
+        if (id) completeDashTask(id);
+      });
+    }
+    return dz;
+  }
+
+  document.addEventListener('dragstart', e => {
+    const card = e.target.closest && e.target.closest('[data-drag-task]');
+    if (!card) return;
+    dragTaskId = card.dataset.dragTask;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragTaskId);
+    getDropZone().classList.add('show');
+  });
+
+  document.addEventListener('dragend', () => {
+    if (!dragTaskId) return;
+    dragTaskId = null;
+    $$('.dash-card.dragging').forEach(el => el.classList.remove('dragging'));
+    const dz = document.getElementById('dash-drop-done');
+    if (dz) dz.classList.remove('show', 'over');
+  });
+})();
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.matches && el.matches('[data-attach]') && el.files[0]) {
