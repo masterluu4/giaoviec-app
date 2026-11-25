@@ -2322,21 +2322,57 @@ const vDashboard = {
     }).sort((a, b) => b.late - a.late || b.total - a.total);
     const maxTotal = Math.max(...peopleStats.map(x => x.total), 1);
 
+    UI.dashFilter = UI.dashFilter || { latePerson: '', todayPerson: '' };
+
+    const buildPersonOpts = (list) => {
+      const counts = {};
+      let unassigned = 0;
+      list.forEach(t => {
+        if (t.nguoiNhan) counts[t.nguoiNhan] = (counts[t.nguoiNhan] || 0) + 1;
+        else unassigned++;
+      });
+      const opts = [{ value: '', label: `Tất cả nhân sự (${list.length})` }];
+      Object.keys(counts).forEach(pid => {
+        const p = personOf(pid);
+        if (p) opts.push({ value: pid, label: `${p.ten} (${counts[pid]})` });
+      });
+      if (unassigned > 0) opts.push({ value: '__none__', label: `Chưa giao (${unassigned})` });
+      return opts;
+    };
+
+    const filterByPerson = (list, filterVal) => {
+      if (!filterVal) return list;
+      if (filterVal === '__none__') return list.filter(t => !t.nguoiNhan);
+      return list.filter(t => t.nguoiNhan === filterVal);
+    };
+
     let overdueHTML = '';
     if (lateTasks.length > 0) {
+      const lateOpts = buildPersonOpts(lateTasks);
+      if (UI.dashFilter.latePerson && !lateOpts.some(o => o.value === UI.dashFilter.latePerson)) {
+        UI.dashFilter.latePerson = '';
+      }
+      const viewLate = filterByPerson(lateTasks, UI.dashFilter.latePerson);
+      const lateWho = UI.dashFilter.latePerson === '__none__'
+        ? ' — Chưa giao'
+        : (UI.dashFilter.latePerson ? ` — ${esc(personOf(UI.dashFilter.latePerson)?.ten || '')}` : '');
+
       overdueHTML = `<div class="card mt" style="border-color:#fca5a5; background:#fef2f2; box-shadow:0 4px 12px rgba(220,38,38,.15)">
         <div class="card-h" style="border-bottom-color:#fecaca; background:#fee2e2; border-radius:14px 14px 0 0">
-          <h3 style="color:#b91c1c; display:flex; align-items:center; gap:8px">${ic('alert')} CẢNH BÁO: CÓ ${lateTasks.length} CÔNG VIỆC ĐANG QUÁ HẠN</h3>
+          <h3 style="color:#b91c1c; display:flex; align-items:center; gap:8px">${ic('alert')} CẢNH BÁO: CÓ ${viewLate.length} CÔNG VIỆC ĐANG QUÁ HẠN${lateWho}</h3>
+          <div class="right">
+            ${selectHTML('dashLateFilter', lateOpts, UI.dashFilter.latePerson, 'sm')}
+          </div>
         </div>
         <div class="card-b" style="padding:16px">
           <div class="grid cols-2" style="gap:12px">
-            ${lateTasks.map(t => {
+            ${viewLate.map(t => {
               const pn = personOf(t.nguoiNhan);
               return `<div style="padding:12px 16px; border:1px solid #fecaca; border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.05); transition:transform .15s" data-act="asmView" data-id="${t.id}" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
                 <div style="min-width:0; flex:1; padding-right:12px">
                   <div style="font-weight:700; color:#1f2937; margin-bottom:4px; white-space:normal; word-break:break-word; line-height:1.4; font-size:14.5px">${esc(t.ten)}</div>
                   <div style="font-size:12.5px; color:#667085; display:flex; align-items:center; gap:6px">
-                    ${pn ? avatar(pn, 'sm') + ' ' + esc(pn.ten) : 'Chưa giao'} 
+                    ${pn ? avatar(pn, 'sm') + ' ' + esc(pn.ten) : 'Chưa giao'}
                     <span>· Hạn chót: <b style="color:#dc2626">${F.date(t.deadline)}</b></span>
                   </div>
                 </div>
@@ -2349,23 +2385,35 @@ const vDashboard = {
         </div>
       </div>`;
     }
-    // THÊM DẢI CẢNH BÁO ĐẾN HẠN HÔM NAY
+
     const todayTasks = asms.filter(a => a.trangThai !== 'Hoàn thành' && a.trangThai !== 'Hủy' && a.deadline === today);
     let todayHTML = '';
     if (todayTasks.length > 0) {
+      const todayOpts = buildPersonOpts(todayTasks);
+      if (UI.dashFilter.todayPerson && !todayOpts.some(o => o.value === UI.dashFilter.todayPerson)) {
+        UI.dashFilter.todayPerson = '';
+      }
+      const viewToday = filterByPerson(todayTasks, UI.dashFilter.todayPerson);
+      const todayWho = UI.dashFilter.todayPerson === '__none__'
+        ? ' — Chưa giao'
+        : (UI.dashFilter.todayPerson ? ` — ${esc(personOf(UI.dashFilter.todayPerson)?.ten || '')}` : '');
+
       todayHTML = `<div class="card mt" style="border-color:#fdba74; background:#fff7ed; box-shadow:0 4px 12px rgba(234,88,12,.15)">
         <div class="card-h" style="border-bottom-color:#fed7aa; background:#ffedd5; border-radius:14px 14px 0 0">
-          <h3 style="color:#c2410c; display:flex; align-items:center; gap:8px">${ic('alert')} LƯU Ý: CÓ ${todayTasks.length} CÔNG VIỆC ĐẾN HẠN HÔM NAY</h3>
+          <h3 style="color:#c2410c; display:flex; align-items:center; gap:8px">${ic('alert')} LƯU Ý: CÓ ${viewToday.length} CÔNG VIỆC ĐẾN HẠN HÔM NAY${todayWho}</h3>
+          <div class="right">
+            ${selectHTML('dashTodayFilter', todayOpts, UI.dashFilter.todayPerson, 'sm')}
+          </div>
         </div>
         <div class="card-b" style="padding:16px">
           <div class="grid cols-2" style="gap:12px">
-            ${todayTasks.map(t => {
+            ${viewToday.map(t => {
               const pn = personOf(t.nguoiNhan);
               return `<div style="padding:12px 16px; border:1px solid #fed7aa; border-radius:10px; background:#fff; display:flex; justify-content:space-between; align-items:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.05); transition:transform .15s" data-act="asmView" data-id="${t.id}" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
                 <div style="min-width:0; flex:1; padding-right:12px">
                   <div style="font-weight:700; color:#1f2937; margin-bottom:4px; white-space:normal; word-break:break-word; line-height:1.4; font-size:14.5px">${esc(t.ten)}</div>
                   <div style="font-size:12.5px; color:#667085; display:flex; align-items:center; gap:6px">
-                    ${pn ? avatar(pn, 'sm') + ' ' + esc(pn.ten) : 'Chưa giao'} 
+                    ${pn ? avatar(pn, 'sm') + ' ' + esc(pn.ten) : 'Chưa giao'}
                     <span>· Hạn chót: <b style="color:#c2410c">${F.date(t.deadline)}</b></span>
                   </div>
                 </div>
@@ -2452,7 +2500,8 @@ const vDashboard = {
         </div>
       ` : '<div class="empty">Chưa có dữ liệu</div>')}
     </div>`;
-
+    onVal('dashLateFilter', v => { UI.dashFilter.latePerson = v; App.render(); });
+    onVal('dashTodayFilter', v => { UI.dashFilter.todayPerson = v; App.render(); });
     setTimeout(() => {
       const el2 = $('#dSoon'); if (!el2) return;
       table(el2, { id: 'soon', rows: soonTasks, pageSize: 5, 
@@ -2639,9 +2688,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderUserSelect() {
       if (!userSelect) return;
-      userSelect.innerHTML = DB.people.map(p => `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
+      userSelect.innerHTML = DB.people.map(p => `<option value="${esc(p.id)}">${esc(p.ten)}</option>`).join('');
       const savedUser = localStorage.getItem('chat_current_user');
       if (savedUser && DB.people.find(p => p.id === savedUser)) userSelect.value = savedUser;
+  }
+  if (userSelect) {
       userSelect.addEventListener('change', (e) => localStorage.setItem('chat_current_user', e.target.value));
   }
 
@@ -2999,9 +3050,9 @@ QUY TẮC BẮT BUỘC:
               if (item.han && /^\d{4}-\d{2}-\d{2}$/.test(item.han)) deadline = item.han;
 
               DB.assignments.push({
-                  id: uid(), ma: 'GV.' + String(DB.assignments.length + 1 + createdCount).padStart(3, '0'),
-                  stt: item.stt || (createdCount + 1), // <-- THÊM DÒNG NÀY VÀO
-                  stt: createdCount + 1, // <-- THÊM DÒNG NÀY VÀO
+                  id: uid(),
+                  ma: 'GV.' + String(DB.assignments.length + 1).padStart(3, '0'),
+                  stt: item.stt || String(createdCount + 1),
                   ten: item.ten || 'Công việc chưa đặt tên', moTa: 'Tạo tự động bằng AI quét ảnh',
                   nguoiGiao: userSelect.value, nguoiNhan: assigneeId, nguoiPhoiHop: [],
                   start: D.today(), deadline: deadline, uuTien: 'Trung bình', trangThai: 'Mới giao', pct: 0, lyDoTre: '',
